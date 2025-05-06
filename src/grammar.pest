@@ -1,0 +1,2 @@
+
+program = { SOI ~ "fn main(){}" ~ EOI }
