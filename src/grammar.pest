@@ -1,2 +1,10 @@
+WHITESPACE = _{ " " | "\t" | "\n" | "\r" } // Unchanged: Whitespace handling
 
-program = { SOI ~ "fn main(){}" ~ EOI }
+program = { SOI ~ statement* ~ EOI } // Allow zero or more statements
+statement = { integer | block | func_definition } // Statements can be integers, blocks, or function definitions
+func_definition = { "fn" ~ ident ~ "()" ~ block } // Unchanged: Function definition
+block = { "{" ~ statement* ~ "}" } // Allow zero or more statements in a block
+integer = { "-"? ~ ASCII_DIGIT+ } // Integer literals (signed or unsigned)
+ident = @{ (alpha | digit)+ } // Unchanged: Identifiers
+alpha = _{ 'a'..'z' | 'A'..'Z' } // Unchanged: Alphabetic characters
+digit = _{ '0'..'9' } // Unchanged: Digits
