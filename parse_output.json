@@ -1,25 +1,25 @@
 [
   {
     "rule": "program",
-    "span": "fn main(){\r\n\t5\r\n}\r\n",
+    "span": "fn main(){\n5+7\n}\n",
     "start_pos": 0,
-    "end_pos": 19,
+    "end_pos": 17,
     "line": 1,
     "column": 1,
     "children": [
       {
         "rule": "statement",
-        "span": "fn main(){\r\n\t5\r\n}",
+        "span": "fn main(){\n5+7\n}",
         "start_pos": 0,
-        "end_pos": 17,
+        "end_pos": 16,
         "line": 1,
         "column": 1,
         "children": [
           {
             "rule": "func_definition",
-            "span": "fn main(){\r\n\t5\r\n}",
+            "span": "fn main(){\n5+7\n}",
             "start_pos": 0,
-            "end_pos": 17,
+            "end_pos": 16,
             "line": 1,
             "column": 1,
             "children": [
@@ -34,28 +34,57 @@
               },
               {
                 "rule": "block",
-                "span": "{\r\n\t5\r\n}",
+                "span": "{\n5+7\n}",
                 "start_pos": 9,
-                "end_pos": 17,
+                "end_pos": 16,
                 "line": 1,
                 "column": 10,
                 "children": [
                   {
                     "rule": "statement",
-                    "span": "5\r\n",
-                    "start_pos": 13,
-                    "end_pos": 16,
+                    "span": "5+7\n",
+                    "start_pos": 11,
+                    "end_pos": 15,
                     "line": 2,
-                    "column": 2,
+                    "column": 1,
                     "children": [
                       {
-                        "rule": "integer",
-                        "span": "5\r\n",
-                        "start_pos": 13,
-                        "end_pos": 16,
+                        "rule": "expression",
+                        "span": "5+7\n",
+                        "start_pos": 11,
+                        "end_pos": 15,
                         "line": 2,
-                        "column": 2,
-                        "children": []
+                        "column": 1,
+                        "children": [
+                          {
+                            "rule": "addition",
+                            "span": "5+7\n",
+                            "start_pos": 11,
+                            "end_pos": 15,
+                            "line": 2,
+                            "column": 1,
+                            "children": [
+                              {
+                                "rule": "integer",
+                                "span": "5",
+                                "start_pos": 11,
+                                "end_pos": 12,
+                                "line": 2,
+                                "column": 1,
+                                "children": []
+                              },
+                              {
+                                "rule": "integer",
+                                "span": "7\n",
+                                "start_pos": 13,
+                                "end_pos": 15,
+                                "line": 2,
+                                "column": 3,
+                                "children": []
+                              }
+                            ]
+                          }
+                        ]
                       }
                     ]
                   }
@@ -68,8 +97,8 @@
       {
         "rule": "EOI",
         "span": "",
-        "start_pos": 19,
-        "end_pos": 19,
+        "start_pos": 17,
+        "end_pos": 17,
         "line": 4,
         "column": 1,
         "children": []

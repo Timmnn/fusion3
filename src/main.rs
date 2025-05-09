@@ -80,10 +80,20 @@ pub enum StatementKind {
     FuncDef(String, Box<StatementNode>), // Function definition: name and body (block)
 }
 
+#[derive(Debug)]
+pub enum ExpressionKind {
+    Addition(Integer, Integer),
+}
+
 // StatementNode struct to represent a statement in the AST
 #[derive(Debug)]
 pub struct StatementNode {
     kind: StatementKind,
+}
+
+#[derive(Debug)]
+pub struct ExpressionNode {
+    kind: ExpressionKind,
 }
 
 // ProgramNode struct to represent a program (sequence of statements)
@@ -98,6 +108,7 @@ pub enum AstNode {
     Statement(Box<StatementNode>),
     Program(Box<ProgramNode>),
     Integer(Integer),
+    Expression(Box<AstNode>),
 }
 
 // Function to build an AST from a pest Pair
@@ -130,11 +141,17 @@ fn build_statement(pair: pest::iterators::Pair<Rule>) -> StatementNode {
         .next()
         .expect("Statement must have content");
     match inner.as_rule() {
-        Rule::integer => StatementNode {
-            kind: StatementKind::Expr(Box::new(AstNode::Integer(
-                inner.as_str().parse::<i32>().expect("Invalid integer"),
-            ))),
-        },
+        Rule::integer => {
+            return StatementNode {
+                kind: StatementKind::Expr(Box::new(AstNode::Integer(
+                    inner
+                        .as_str()
+                        .trim()
+                        .parse::<i32>()
+                        .expect("Invalid integer"),
+                ))),
+            };
+        }
         Rule::block => {
             let statements = inner
                 .into_inner()
@@ -154,7 +171,7 @@ fn build_statement(pair: pest::iterators::Pair<Rule>) -> StatementNode {
                 .expect("Function definition must have an identifier")
                 .as_str()
                 .to_string();
-            let _ = inner_pairs.next(); // Skip "()" (no parameters)
+
             let block = inner_pairs
                 .next()
                 .expect("Function definition must have a block");
@@ -163,7 +180,26 @@ fn build_statement(pair: pest::iterators::Pair<Rule>) -> StatementNode {
                 kind: StatementKind::FuncDef(ident, Box::new(block_node)),
             }
         }
+        Rule::expression => StatementNode {
+            kind: StatementKind::Expr(Box::new(AstNode::Expression(build_expression(inner)))),
+        },
+
+        Rule::statement => build_statement(inner),
         _ => panic!("Unsupported statement kind: {:?}", inner.as_rule()),
+    }
+}
+
+fn build_expression(pair: pest::iterators::Pair<Rule>) -> ExpressionNode {
+    let inner = pair
+        .into_inner()
+        .next()
+        .expect("Expression must have content");
+
+    match inner.as_rule() {
+        Rule::addition => ExpressionNode {
+            kind: ExpressionKind::Addition(5, 4),
+        },
+        _ => panic!("Unsupported expression kind: {:?}", inner.as_rule()),
     }
 }
 
