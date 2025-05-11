@@ -1,11 +1,18 @@
+mod ast_builder;
+
 mod ast_nodes;
+mod codegen;
 mod parser;
 
+use ast_builder::build_ast_from_pairs;
 use clap::Parser as ClapParser;
+use codegen::gen_code;
 use parser::{FusionParser, Rule};
 use pest::Parser;
 use serde::Serialize;
 use serde_json;
+use sh::sh;
+use std::process::Command;
 use std::{
     fs::{self, File},
     io::Write,
@@ -18,12 +25,17 @@ use std::{
 struct Args {
     #[arg(long)]
     input: String,
+    #[arg(long)]
+    output: String,
 }
 
 fn main() {
     let args = Args::parse();
 
-    let file_name = args.input;
+    let file_name = &args.input;
+
+    //println!("{:?} {:?}", &args.input, &args.output);
+
     let file_path = Path::new(file_name.as_str());
 
     let file_content = fs::read_to_string(file_path)
@@ -31,248 +43,30 @@ fn main() {
         .to_string();
     let mut rules = FusionParser::parse(Rule::program, &file_content).unwrap();
 
-    // Convert to JSON structure
-    let json_nodes = pairs_to_json(rules.clone());
-
-    // Serialize to JSON
-    let json_output =
-        serde_json::to_string_pretty(&json_nodes).expect("Failed to serialize to JSON");
-
-    // Write to file
-    let mut file = File::create("parse_output.json").unwrap();
-    file.write_all(json_output.as_bytes());
-
-    pretty_print_parse_tree(&rules, 0);
-
     let pair = rules.next().unwrap();
     let ast = match pair.as_rule() {
-        Rule::program => build_ast_from_expr(pair),
+        Rule::program => build_ast_from_pairs(pair),
         _ => panic!(
             "Top Level Node can only be a program. Not a {}",
             pair.as_str()
         ),
     };
 
-    pretty_print(&ast, 0); // Call pretty_print instead of println!
-}
+    println!("{}", ast);
+    println!("{:?}", ast);
 
-fn pretty_print_parse_tree(pairs: &pest::iterators::Pairs<Rule>, indent: usize) {
-    let indent_str = "  ".repeat(indent); // Two spaces per indent level
+    let code = gen_code(ast);
 
-    for pair in pairs.clone() {
-        let rule = pair.as_rule();
-        let content = pair.as_str().trim(); // Trim to avoid extra whitespace
-        println!("{}{}: '{}'", indent_str, format!("{:?}", rule), content);
+    let str = code.unwrap();
 
-        // Recursively print inner pairs with increased indentation
-        pretty_print_parse_tree(&pair.into_inner(), indent + 1);
-    }
-}
+    let output = Command::new("sh")
+        .arg("-c")
+        .arg(format!("echo '{}' | clang-format", str))
+        .output()
+        .unwrap();
 
-// Type alias for integers
-pub type Integer = i32;
+    fs::write("output.c", output.stdout);
 
-// StatementKind enum to specify different types of statements
-#[derive(Debug)]
-pub enum StatementKind {
-    Expr(Box<AstNode>),                  // Expression statement
-    Block(Vec<StatementNode>),           // Block of statements
-    FuncDef(String, Box<StatementNode>), // Function definition: name and body (block)
-}
-
-#[derive(Debug)]
-pub enum ExpressionKind {
-    Addition(Integer, Integer),
-}
-
-// StatementNode struct to represent a statement in the AST
-#[derive(Debug)]
-pub struct StatementNode {
-    kind: StatementKind,
-}
-
-#[derive(Debug)]
-pub struct ExpressionNode {
-    kind: ExpressionKind,
-}
-
-// ProgramNode struct to represent a program (sequence of statements)
-#[derive(Debug)]
-pub struct ProgramNode {
-    statements: Vec<StatementNode>,
-}
-
-// AstNode enum to represent AST nodes
-#[derive(Debug)]
-pub enum AstNode {
-    Statement(Box<StatementNode>),
-    Program(Box<ProgramNode>),
-    Integer(Integer),
-    Expression(Box<AstNode>),
-}
-
-// Function to build an AST from a pest Pair
-fn build_ast_from_expr(pair: pest::iterators::Pair<Rule>) -> AstNode {
-    match pair.as_rule() {
-        Rule::program => {
-            let statements = pair
-                .into_inner()
-                .filter_map(|p| {
-                    match p.as_rule() {
-                        Rule::statement => Some(build_statement(p)),
-                        _ => None, // Ignore non-statement rules
-                    }
-                })
-                .collect::<Vec<StatementNode>>();
-            AstNode::Program(Box::new(ProgramNode { statements }))
-        }
-        Rule::integer => {
-            let value = pair.as_str().parse::<i32>().expect("Invalid integer");
-            AstNode::Integer(value)
-        }
-        _ => panic!("Unsupported rule: {:?}", pair.as_rule()),
-    }
-}
-
-// Helper function to build a StatementNode from a statement rule
-fn build_statement(pair: pest::iterators::Pair<Rule>) -> StatementNode {
-    let inner = pair
-        .into_inner()
-        .next()
-        .expect("Statement must have content");
-    match inner.as_rule() {
-        Rule::integer => {
-            return StatementNode {
-                kind: StatementKind::Expr(Box::new(AstNode::Integer(
-                    inner
-                        .as_str()
-                        .trim()
-                        .parse::<i32>()
-                        .expect("Invalid integer"),
-                ))),
-            };
-        }
-        Rule::block => {
-            let statements = inner
-                .into_inner()
-                .filter_map(|p| match p.as_rule() {
-                    Rule::statement => Some(build_statement(p)),
-                    _ => None,
-                })
-                .collect::<Vec<StatementNode>>();
-            StatementNode {
-                kind: StatementKind::Block(statements),
-            }
-        }
-        Rule::func_definition => {
-            let mut inner_pairs = inner.into_inner();
-            let ident = inner_pairs
-                .next()
-                .expect("Function definition must have an identifier")
-                .as_str()
-                .to_string();
-
-            let block = inner_pairs
-                .next()
-                .expect("Function definition must have a block");
-            let block_node = build_statement(block); // Parse block as a statement
-            StatementNode {
-                kind: StatementKind::FuncDef(ident, Box::new(block_node)),
-            }
-        }
-        Rule::expression => StatementNode {
-            kind: StatementKind::Expr(Box::new(AstNode::Expression(build_expression(inner)))),
-        },
-
-        Rule::statement => build_statement(inner),
-        _ => panic!("Unsupported statement kind: {:?}", inner.as_rule()),
-    }
-}
-
-fn build_expression(pair: pest::iterators::Pair<Rule>) -> ExpressionNode {
-    let inner = pair
-        .into_inner()
-        .next()
-        .expect("Expression must have content");
-
-    match inner.as_rule() {
-        Rule::addition => ExpressionNode {
-            kind: ExpressionKind::Addition(5, 4),
-        },
-        _ => panic!("Unsupported expression kind: {:?}", inner.as_rule()),
-    }
-}
-
-#[derive(Serialize)]
-struct ParseNode {
-    rule: String,
-    span: String,
-    start_pos: usize,
-    end_pos: usize,
-    line: usize,
-    column: usize,
-    children: Vec<ParseNode>,
-}
-
-fn pairs_to_json(pairs: pest::iterators::Pairs<Rule>) -> Vec<ParseNode> {
-    let mut nodes = Vec::new();
-    for pair in pairs {
-        let rule = format!("{:?}", pair.as_rule());
-        let span = pair.as_str().to_string();
-        let span_obj = pair.as_span();
-        let (line, column) = span_obj.start_pos().line_col();
-        let children = pairs_to_json(pair.into_inner());
-        nodes.push(ParseNode {
-            rule,
-            span,
-            start_pos: span_obj.start(),
-            end_pos: span_obj.end(),
-            line,
-            column,
-            children,
-        });
-    }
-    nodes
-}
-
-// Function to pretty print the AST with indentation
-fn pretty_print(node: &AstNode, indent: usize) {
-    let indent_str = "  ".repeat(indent); // Two spaces per indent level
-
-    match node {
-        AstNode::Program(program) => {
-            println!("{}Program:", indent_str);
-            for stmt in &program.statements {
-                pretty_print_statement(stmt, indent + 1);
-            }
-        }
-        AstNode::Statement(stmt) => {
-            pretty_print_statement(stmt, indent);
-        }
-        AstNode::Integer(value) => {
-            println!("{}Integer({})", indent_str, value);
-        }
-    }
-}
-
-// Helper function to pretty print a StatementNode
-fn pretty_print_statement(stmt: &StatementNode, indent: usize) {
-    let indent_str = "  ".repeat(indent);
-
-    match &stmt.kind {
-        StatementKind::Expr(expr) => {
-            println!("{}Expr:", indent_str);
-            pretty_print(expr, indent + 1);
-        }
-        StatementKind::Block(stmts) => {
-            println!("{}Block:", indent_str);
-            for stmt in stmts {
-                pretty_print_statement(stmt, indent + 1);
-            }
-        }
-        StatementKind::FuncDef(name, body) => {
-            println!("{}FuncDef({}):", indent_str, name);
-            pretty_print_statement(body, indent + 1);
-        }
-    }
+    sh!(gcc "output.c" "-o" {args.output});
+    //sh!(rm "output.c");
 }
