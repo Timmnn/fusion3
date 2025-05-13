@@ -1,7 +1,7 @@
 WHITESPACE      = _{ " " | "\t" | "\n" | "\r" }
 program         =  { SOI ~ (statement ~ NEWLINE?)* ~ EOI }
 NEWLINE         = _{ "\n" | "\r\n" }
-statement       =  { expression | block | func_definition }
+statement       =  { expression | block | func_definition | c_import }
 
 
 
@@ -23,6 +23,10 @@ ident           = @{ (alpha | digit)+ }
 alpha           = _{ 'a'..'z' | 'A'..'Z' }
 digit           = _{ '0'..'9' }
 WS              = _{ WHITESPACE* }
+
+//Imports
+c_import = { "_c_import" ~ string_lit }
+
 
 string_lit      = { "\"" ~ inner_string ~ "\"" }
 inner_string = @{

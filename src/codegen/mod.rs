@@ -58,6 +58,9 @@ fn walk_statement(statement: StatementNode, ctx: Context) -> Result<CodeGenResul
         StatementKind::Expr(expr) => walk_expression(*expr, ctx),
         StatementKind::Block(block) => walk_block(block, ctx),
         StatementKind::FuncDef(name, stat) => walk_func_def(name, stat, ctx),
+        StatementKind::CImport(lib) => Ok(CodeGenResult {
+            code: "#include".to_string() + lib.as_str(),
+        }),
     }
 }
 
@@ -68,6 +71,9 @@ fn walk_expression(expr: ExpressionNode, ctx: Context) -> Result<CodeGenResult, 
         }),
         ExpressionKind::Subtraction(a, b) => Ok(CodeGenResult {
             code: format!("{}-{};", a, b),
+        }),
+        ExpressionKind::StringLit(str) => Ok(CodeGenResult {
+            code: str.to_string() + ";",
         }),
         ExpressionKind::FuncCall(func_call_node) => walk_func_call(func_call_node),
         kind => todo!("Expression type {} not yet implemented", kind),

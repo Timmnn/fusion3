@@ -1,3 +1,5 @@
+_c_import "stdio.h"
+
 fn test(){}
 
 
@@ -5,7 +7,7 @@ fn main(){
 	5    +   7896
 	1-         9
 
-	test()
+	printf()
 
 	"Hi"
 }

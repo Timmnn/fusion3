@@ -8,6 +8,7 @@ pub enum StatementKind {
     Expr(Box<ExpressionNode>),  // Expression statement
     Block(BlockNode),           // Block of statements
     FuncDef(String, BlockNode), // Function definition: name and body (block)
+    CImport(String),
 }
 
 // StatementNode struct to represent a statement in the AST
@@ -39,6 +40,9 @@ impl fmt::Display for StatementKind {
                 writeln!(f, "FuncDef({})", name)?;
                 writeln!(f, "    {}", body)?;
                 write!(f, "")
+            }
+            StatementKind::CImport(lib) => {
+                write!(f, "c_import_lib")
             }
         }
     }

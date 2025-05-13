@@ -69,6 +69,11 @@ fn build_statement(pair: pest::iterators::Pair<Rule>) -> StatementNode {
             kind: StatementKind::Expr(Box::new(build_expression(inner))),
         },
         Rule::statement => build_statement(inner),
+
+        Rule::c_import => StatementNode {
+            kind: StatementKind::CImport(inner.into_inner().next().unwrap().as_str().to_string()),
+        },
+
         _ => panic!("Unsupported statement kind: {:?}", inner.as_rule()),
     }
 }
@@ -120,7 +125,7 @@ fn build_expression(pair: pest::iterators::Pair<Rule>) -> ExpressionNode {
 
         Rule::string_lit => {
             return ExpressionNode {
-                kind: ExpressionKind::StringLit(inner.to_string()),
+                kind: ExpressionKind::StringLit(inner.as_str().to_string()),
             };
         }
 
