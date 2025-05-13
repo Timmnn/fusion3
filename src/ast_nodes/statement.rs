@@ -1,13 +1,13 @@
 use std::fmt;
 
-use super::{BlockNode, expression::ExpressionNode};
+use super::{BlockNode, expression::ExpressionNode, func_def::FuncDefNode};
 
 // StatementKind enum to specify different types of statements
 #[derive(Debug, Clone)]
 pub enum StatementKind {
-    Expr(Box<ExpressionNode>),  // Expression statement
-    Block(BlockNode),           // Block of statements
-    FuncDef(String, BlockNode), // Function definition: name and body (block)
+    Expr(Box<ExpressionNode>), // Expression statement
+    Block(BlockNode),          // Block of statements
+    FuncDef(FuncDefNode),      // Function definition: name and body (block)
     CImport(String),
 }
 
@@ -36,10 +36,8 @@ impl fmt::Display for StatementKind {
                 }
                 write!(f, ")")
             }
-            StatementKind::FuncDef(name, body) => {
-                writeln!(f, "FuncDef({})", name)?;
-                writeln!(f, "    {}", body)?;
-                write!(f, "")
+            StatementKind::FuncDef(func_def_node) => {
+                write!(f, "FuncDef()")
             }
             StatementKind::CImport(lib) => {
                 write!(f, "c_import_lib")

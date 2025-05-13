@@ -54,35 +54,53 @@ fn walk_program(program: ProgramNode, ctx: Context) -> Result<CodeGenResult, Cod
 }
 
 fn walk_statement(statement: StatementNode, ctx: Context) -> Result<CodeGenResult, CodeGenError> {
-    match statement.kind {
+    let mut result = match statement.kind {
         StatementKind::Expr(expr) => walk_expression(*expr, ctx),
         StatementKind::Block(block) => walk_block(block, ctx),
         StatementKind::FuncDef(name, stat) => walk_func_def(name, stat, ctx),
         StatementKind::CImport(lib) => Ok(CodeGenResult {
             code: "#include".to_string() + lib.as_str(),
         }),
+    };
+
+    if let Ok(val) = result {
+        return Ok(CodeGenResult {
+            code: val.code + ";",
+        });
+    } else {
+        return result;
     }
 }
 
 fn walk_expression(expr: ExpressionNode, ctx: Context) -> Result<CodeGenResult, CodeGenError> {
     match expr.kind {
         ExpressionKind::Addition(a, b) => Ok(CodeGenResult {
-            code: format!("{}+{};", a, b),
+            code: format!("{}+{}", a, b),
         }),
         ExpressionKind::Subtraction(a, b) => Ok(CodeGenResult {
-            code: format!("{}-{};", a, b),
+            code: format!("{}-{}", a, b),
         }),
-        ExpressionKind::StringLit(str) => Ok(CodeGenResult {
-            code: str.to_string() + ";",
-        }),
-        ExpressionKind::FuncCall(func_call_node) => walk_func_call(func_call_node),
+        ExpressionKind::StringLit(str) => {
+            println!("Hä {}", str);
+            let literal_str = str.replace("\\n", "\\\\n").replace("\\\"", "\\\\\"");
+
+            return Ok(CodeGenResult { code: literal_str });
+        }
+        ExpressionKind::FuncCall(func_call_node) => walk_func_call(func_call_node, ctx),
         kind => todo!("Expression type {} not yet implemented", kind),
     }
 }
 
-fn walk_func_call(func_call: FuncCallNode) -> Result<CodeGenResult, CodeGenError> {
+fn walk_func_call(func_call: FuncCallNode, ctx: Context) -> Result<CodeGenResult, CodeGenError> {
+    let params_code = func_call
+        .params
+        .into_iter()
+        .map(|param| walk_expression(param, ctx).unwrap().code)
+        .collect::<Vec<String>>()
+        .join(", ");
+
     Ok(CodeGenResult {
-        code: format!("{}();", func_call.name),
+        code: format!("{}({});", func_call.name, params_code),
     })
 }
 

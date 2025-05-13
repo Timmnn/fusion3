@@ -2,39 +2,30 @@ WHITESPACE      = _{ " " | "\t" | "\n" | "\r" }
 program         =  { SOI ~ (statement ~ NEWLINE?)* ~ EOI }
 NEWLINE         = _{ "\n" | "\r\n" }
 statement       =  { expression | block | func_definition | c_import }
-
-
-
 // Math
 addition        =  { integer ~ WS ~ "+" ~ WS ~ integer }
-subtraction    =  { integer ~ WS ~ "-" ~ WS ~ integer }
-
-
+subtraction     =  { integer ~ WS ~ "-" ~ WS ~ integer }
 // Expressions 
 expression      =  { addition | subtraction | integer | func_call | string_lit }
 integer         = @{ "-"? ~ ASCII_DIGIT+ }
-func_call       =  { ident ~ "()" }
-
-
-
-func_definition =  { "fn" ~ WS ~ ident ~ WS ~ "()" ~ WS ~ block }
+func_call       =  { ident ~ "(" ~ param_list? ~ ")" }
+param_list      =  { expression ~ (WS? ~ "," ~ WS? ~ expression)* }
+func_definition =  { "fn" ~ WS ~ ident ~ WS ~ "(" ~ param_def_list? ~ ")" ~ WS ~ block }
+param_def_list  =  { param_def ~ (WS? ~ "," ~ WS? ~ param_def)* }
+param_def = { ident ~ ":" ~ ident }
 block           =  { "{" ~ WS ~ (statement ~ NEWLINE?)* ~ WS ~ "}" }
 ident           = @{ (alpha | digit)+ }
 alpha           = _{ 'a'..'z' | 'A'..'Z' }
 digit           = _{ '0'..'9' }
 WS              = _{ WHITESPACE* }
-
 //Imports
-c_import = { "_c_import" ~ string_lit }
-
-
-string_lit      = { "\"" ~ inner_string ~ "\"" }
-inner_string = @{
+c_import        =  { "_c_import" ~ string_lit }
+string_lit      =  { "\"" ~ inner_string ~ "\"" }
+inner_string    = @{
     (
         !("\"" | "\\") ~ ANY
         | "\\" ~ ("\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t")
         | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
     )*
 }
-whitespace = _{ " " | "\t" | "\r" | "\n" }
-
+whitespace      = _{ " " | "\t" | "\r" | "\n" }

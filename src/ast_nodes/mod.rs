@@ -1,12 +1,12 @@
 pub mod expression;
 pub mod func_call;
+pub mod func_def;
 pub mod statement;
 
 use expression::*;
-use func_call::*;
 use statement::*;
 
-use std::fmt::{self, write};
+use std::fmt::{self};
 
 // Type alias for integers
 pub type Integer = i32;

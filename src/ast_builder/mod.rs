@@ -2,6 +2,7 @@ use crate::ast_nodes::{
     AstNode, BlockNode, ProgramNode,
     expression::{ExpressionKind, ExpressionNode},
     func_call::FuncCallNode,
+    func_def::FuncDefNode,
     statement::{StatementKind, StatementNode},
 };
 use crate::parser::{FusionParser, Rule};
@@ -49,22 +50,9 @@ fn build_statement(pair: pest::iterators::Pair<Rule>) -> StatementNode {
         Rule::block => StatementNode {
             kind: StatementKind::Block(build_block(inner)),
         },
-        Rule::func_definition => {
-            let mut inner_pairs = inner.into_inner();
-            let ident = inner_pairs
-                .next()
-                .expect("Function definition must have an identifier")
-                .as_str()
-                .to_string();
-
-            let block = inner_pairs
-                .next()
-                .expect("Function definition must have a block");
-            let block_node = build_block(block); // Parse block as a statement
-            StatementNode {
-                kind: StatementKind::FuncDef(ident, block_node),
-            }
-        }
+        Rule::func_definition => StatementNode {
+            kind: StatementKind::FuncDef(build_func_def(inner)),
+        },
         Rule::expression => StatementNode {
             kind: StatementKind::Expr(Box::new(build_expression(inner))),
         },
@@ -76,6 +64,23 @@ fn build_statement(pair: pest::iterators::Pair<Rule>) -> StatementNode {
 
         _ => panic!("Unsupported statement kind: {:?}", inner.as_rule()),
     }
+}
+
+fn build_func_def(pair: pest::iterators::Pair<Rule>) -> FuncDefNode {
+    let mut inner = pair.into_inner();
+
+    let name = inner.next().unwrap();
+
+    let param_list = inner.next().unwrap();
+
+    let block = inner.next().unwrap();
+
+    println!("{} {} {}", name, param_list, block);
+
+    return FuncDefNode {
+        name: name.to_string(),
+        params: vec![],
+    };
 }
 
 fn build_block(pair: pest::iterators::Pair<Rule>) -> BlockNode {
@@ -114,13 +119,34 @@ fn build_expression(pair: pest::iterators::Pair<Rule>) -> ExpressionNode {
             }
         }
         Rule::func_call => {
-            let node = inner.into_inner().next().unwrap();
+            let mut nodes = inner.into_inner();
 
-            return ExpressionNode {
-                kind: ExpressionKind::FuncCall(FuncCallNode {
-                    name: node.as_str().to_string(),
-                }),
-            };
+            let function_name = nodes.next().unwrap();
+
+            let param_list = nodes.next();
+
+            if let Some(param_list) = param_list {
+                let mut expression_nodes = param_list.into_inner();
+
+                let mut expressions = vec![];
+                while let Some(param) = expression_nodes.next() {
+                    expressions.push(build_expression(param));
+                }
+
+                return ExpressionNode {
+                    kind: ExpressionKind::FuncCall(FuncCallNode {
+                        name: function_name.as_str().to_string(),
+                        params: expressions,
+                    }),
+                };
+            } else {
+                return ExpressionNode {
+                    kind: ExpressionKind::FuncCall(FuncCallNode {
+                        name: function_name.as_str().to_string(),
+                        params: vec![],
+                    }),
+                };
+            }
         }
 
         Rule::string_lit => {
