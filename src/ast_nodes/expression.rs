@@ -1,5 +1,5 @@
-use super::Integer;
-use std::fmt;
+use super::{Integer, func_call::FuncCallNode};
+use std::fmt::{self, write};
 
 #[derive(Debug, Clone)]
 pub struct ExpressionNode {
@@ -11,6 +11,8 @@ pub enum ExpressionKind {
     Addition(Integer, Integer),
     Subtraction(Integer, Integer),
     Integer(i32),
+    FuncCall(FuncCallNode),
+    StringLit(String),
 }
 
 // Implement Display for ExpressionKind
@@ -22,6 +24,8 @@ impl fmt::Display for ExpressionKind {
                 write!(f, "Subtraction({}, {})", left, right)
             }
             ExpressionKind::Integer(val) => write!(f, "Integer({})", val),
+            ExpressionKind::FuncCall(func_call_node) => func_call_node.fmt(f),
+            ExpressionKind::StringLit(str) => write!(f, "String"),
         }
     }
 }

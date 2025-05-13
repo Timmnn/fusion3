@@ -1,6 +1,7 @@
 use crate::ast_nodes::{
     AstNode, BlockNode, ProgramNode,
     expression::{ExpressionKind, ExpressionNode},
+    func_call::FuncCallNode,
     statement::{StatementKind, StatementNode},
 };
 use crate::parser::{FusionParser, Rule};
@@ -106,8 +107,22 @@ fn build_expression(pair: pest::iterators::Pair<Rule>) -> ExpressionNode {
             ExpressionNode {
                 kind: ExpressionKind::Addition(value, 0), // Treat standalone integer as an addition with 0
             }
-        },
-        Rule::func_call
+        }
+        Rule::func_call => {
+            let node = inner.into_inner().next().unwrap();
+
+            return ExpressionNode {
+                kind: ExpressionKind::FuncCall(FuncCallNode {
+                    name: node.as_str().to_string(),
+                }),
+            };
+        }
+
+        Rule::string_lit => {
+            return ExpressionNode {
+                kind: ExpressionKind::StringLit(inner.to_string()),
+            };
+        }
 
         _ => panic!("Unsupported expression kind: {:?}", inner.as_rule()),
     }

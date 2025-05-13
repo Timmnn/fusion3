@@ -3,6 +3,7 @@ use std::{error::Error, fmt::format};
 use crate::ast_nodes::{
     AstNode, BlockNode, ProgramNode,
     expression::{ExpressionKind, ExpressionNode},
+    func_call::FuncCallNode,
     statement::{StatementKind, StatementNode},
 };
 
@@ -68,8 +69,15 @@ fn walk_expression(expr: ExpressionNode, ctx: Context) -> Result<CodeGenResult, 
         ExpressionKind::Subtraction(a, b) => Ok(CodeGenResult {
             code: format!("{}-{};", a, b),
         }),
+        ExpressionKind::FuncCall(func_call_node) => walk_func_call(func_call_node),
         kind => todo!("Expression type {} not yet implemented", kind),
     }
+}
+
+fn walk_func_call(func_call: FuncCallNode) -> Result<CodeGenResult, CodeGenError> {
+    Ok(CodeGenResult {
+        code: format!("{}();", func_call.name),
+    })
 }
 
 fn walk_block(block: BlockNode, ctx: Context) -> Result<CodeGenResult, CodeGenError> {

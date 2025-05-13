@@ -9,15 +9,10 @@ use clap::Parser as ClapParser;
 use codegen::gen_code;
 use parser::{FusionParser, Rule};
 use pest::Parser;
-use serde::Serialize;
-use serde_json;
 use sh::sh;
+use std::fs;
+use std::path::Path;
 use std::process::Command;
-use std::{
-    fs::{self, File},
-    io::Write,
-    path::Path,
-};
 
 /// Simple program to parse a function definition
 #[derive(ClapParser, Debug)]
@@ -59,11 +54,23 @@ fn main() {
 
     let str = code.unwrap();
 
-    let output = Command::new("sh")
-        .arg("-c")
-        .arg(format!("echo '{}' | clang-format", str))
-        .output()
-        .unwrap();
+    println!("{}", str);
+
+    let output;
+
+    if std::env::consts::OS == "windows" {
+        output = Command::new("powershell")
+            .arg("-c")
+            .arg(format!("echo '{}' | clang-format", str))
+            .output()
+            .unwrap();
+    } else {
+        output = Command::new("sh")
+            .arg("-c")
+            .arg(format!("echo '{}' | clang-format", str))
+            .output()
+            .unwrap();
+    }
 
     fs::write("output.c", output.stdout);
 
