@@ -1,7 +1,7 @@
 _c_import "stdio.h"
 
-fn test(value: string){
-	printf("%s", "Hello World!\n")
+fn test(value: int){
+	printf("%d\n", "Hello World!\n")
 }
 
 

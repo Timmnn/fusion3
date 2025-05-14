@@ -2,7 +2,7 @@ use crate::ast_nodes::{
     AstNode, BlockNode, ProgramNode,
     expression::{ExpressionKind, ExpressionNode},
     func_call::FuncCallNode,
-    func_def::FuncDefNode,
+    func_def::{FuncDefNode, FuncParam},
     statement::{StatementKind, StatementNode},
 };
 use crate::parser::{FusionParser, Rule};
@@ -69,18 +69,39 @@ fn build_statement(pair: pest::iterators::Pair<Rule>) -> StatementNode {
 fn build_func_def(pair: pest::iterators::Pair<Rule>) -> FuncDefNode {
     let mut inner = pair.into_inner();
 
+    let block;
+    let params_list;
     let name = inner.next().unwrap();
 
-    let param_list = inner.next().unwrap();
+    if inner.len() == 2 {
+        let temp = inner.next().unwrap().into_inner();
 
-    let block = inner.next().unwrap();
+        println!("TEMP {}", temp);
 
-    println!("{} {} {}", name, param_list, block);
+        params_list = temp.map(|node| build_func_def_param(node)).collect();
+        block = inner.next().unwrap();
+    } else {
+        params_list = vec![];
+        block = inner.next().unwrap();
+    }
 
     return FuncDefNode {
-        name: name.to_string(),
-        params: vec![],
+        name: name.as_str().to_string(),
+        params: params_list,
+        body: build_block(block),
     };
+}
+
+fn build_func_def_param(pair: pest::iterators::Pair<Rule>) -> FuncParam {
+    let mut inner = pair.into_inner();
+
+    let name = inner.next().unwrap();
+    let param_type = inner.next().unwrap();
+
+    FuncParam {
+        name: name.as_str().to_string(),
+        param_type: param_type.as_str().to_string(),
+    }
 }
 
 fn build_block(pair: pest::iterators::Pair<Rule>) -> BlockNode {

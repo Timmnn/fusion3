@@ -4,6 +4,7 @@ use crate::ast_nodes::{
     AstNode, BlockNode, ProgramNode,
     expression::{ExpressionKind, ExpressionNode},
     func_call::FuncCallNode,
+    func_def::{FuncDefNode, FuncParam},
     statement::{StatementKind, StatementNode},
 };
 
@@ -57,7 +58,7 @@ fn walk_statement(statement: StatementNode, ctx: Context) -> Result<CodeGenResul
     let mut result = match statement.kind {
         StatementKind::Expr(expr) => walk_expression(*expr, ctx),
         StatementKind::Block(block) => walk_block(block, ctx),
-        StatementKind::FuncDef(name, stat) => walk_func_def(name, stat, ctx),
+        StatementKind::FuncDef(func_call_node) => walk_func_def(func_call_node, ctx),
         StatementKind::CImport(lib) => Ok(CodeGenResult {
             code: "#include".to_string() + lib.as_str(),
         }),
@@ -116,16 +117,27 @@ fn walk_block(block: BlockNode, ctx: Context) -> Result<CodeGenResult, CodeGenEr
     })
 }
 
-fn walk_func_def(
-    name: String,
-    block: BlockNode,
-    ctx: Context,
-) -> Result<CodeGenResult, CodeGenError> {
+fn walk_func_def(node: FuncDefNode, ctx: Context) -> Result<CodeGenResult, CodeGenError> {
+    println!("NODE {:?}", node);
+
     return Ok(CodeGenResult {
         code: format!(
-            "int {}() {{ {} }}",
-            name,
-            walk_block(block, ctx).unwrap().code
+            "int {}({}) {{ {} }}",
+            node.name,
+            walk_func_def_params(node.params, ctx).unwrap().code,
+            walk_block(node.body, ctx).unwrap().code
         ),
     });
+}
+
+fn walk_func_def_params(
+    params: Vec<FuncParam>,
+    ctx: Context,
+) -> Result<CodeGenResult, CodeGenError> {
+    let x = params
+        .into_iter()
+        .map(|param| format!("{} {}", param.param_type, param.name))
+        .collect();
+
+    Ok(CodeGenResult { code: x })
 }

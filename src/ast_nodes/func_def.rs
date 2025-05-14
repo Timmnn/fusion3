@@ -1,17 +1,18 @@
 use std::fmt;
 
-use super::expression::ExpressionNode;
+use super::{BlockNode, expression::ExpressionNode};
 
 #[derive(Debug, Clone)]
 pub struct FuncDefNode {
     pub name: String,
     pub params: Vec<FuncParam>,
+    pub body: BlockNode,
 }
 
 #[derive(Debug, Clone)]
 pub struct FuncParam {
-    name: String,
-    param_type: String,
+    pub name: String,
+    pub param_type: String,
 }
 
 impl fmt::Display for FuncDefNode {
