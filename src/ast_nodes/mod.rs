@@ -3,7 +3,7 @@ pub mod func_call;
 pub mod func_def;
 pub mod statement;
 
-use expression::*;
+pub use expression::*;
 use statement::*;
 
 use std::fmt::{self};

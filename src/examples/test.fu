@@ -1,21 +1,7 @@
-_c_import "stdio.h"
+//Comments are started with '//'
 
-fn test(value: int){
-	printf("%d\n", "Hello World!\n")
-}
-
-
-fn main(){
-	5    +   7896
-	1-         9
-
-
-
-	test()
-	test()
-	test()
-	test()
-
-
-	"Hi"
+// Function Definition
+fn function(){}
+fn function(): Int{
+  return 5
 }

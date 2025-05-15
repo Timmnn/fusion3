@@ -1,6 +1,6 @@
 #include "stdio.h";
 int test(int value) {
-  printf("%d\\n", "Hello World!\\n");
+  printf("%d\n", "Hello World!\n");
   ;
 };
 int main() {

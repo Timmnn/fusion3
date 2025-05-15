@@ -3,6 +3,7 @@ mod ast_builder;
 mod ast_nodes;
 mod codegen;
 mod parser;
+mod pratt;
 
 use ast_builder::build_ast_from_pairs;
 use clap::Parser as ClapParser;

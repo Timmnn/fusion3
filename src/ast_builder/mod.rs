@@ -7,6 +7,18 @@ use crate::ast_nodes::{
 };
 use crate::parser::{FusionParser, Rule};
 
+// Define precedence levels for operators
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
+pub enum Precedence {
+    None = 0,
+    Assignment = 1, // =
+    Sum = 10,       // + -
+    Product = 20,   // * /
+    Prefix = 30,    // -x !x
+    Call = 40,      // func()
+    Primary = 50,   // literals, identifiers
+}
+
 pub fn build_ast_from_pairs(pair: pest::iterators::Pair<Rule>) -> AstNode {
     match pair.as_rule() {
         Rule::program => AstNode::Program(Box::new(build_program(pair))),
