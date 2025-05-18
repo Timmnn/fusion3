@@ -1,7 +1,1 @@
-//Comments are started with '//'
-
-// Function Definition
-fn function(){}
-fn function(): Int{
-  return 5
-}
+1 + 2 * 5

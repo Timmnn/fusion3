@@ -1,224 +1,152 @@
+use std::vec;
+
 use crate::ast_nodes::{
-    AstNode, BlockNode, ProgramNode,
-    expression::{ExpressionKind, ExpressionNode},
+    block::BlockNode,
+    calc::{Addent, CalculationKind, CalculationNode, Factor, MultiplicationNode},
+    expression::{
+        AddExprNode, AddExprPart, AddOp, ExpressionKind, ExpressionNode, MulExprNode, MulExprPart,
+        MulOp, PrimaryKind, PrimaryNode,
+    },
     func_call::FuncCallNode,
     func_def::{FuncDefNode, FuncParam},
-    statement::{StatementKind, StatementNode},
+    operation::{OperationKind, OperationNode},
+    program::ProgramNode,
+    term::{TermKind, TermNode, VarDeclNode},
 };
 use crate::parser::{FusionParser, Rule};
 
-// Define precedence levels for operators
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
-pub enum Precedence {
-    None = 0,
-    Assignment = 1, // =
-    Sum = 10,       // + -
-    Product = 20,   // * /
-    Prefix = 30,    // -x !x
-    Call = 40,      // func()
-    Primary = 50,   // literals, identifiers
-}
+type Pair<'a> = pest::iterators::Pair<'a, Rule>;
 
-pub fn build_ast_from_pairs(pair: pest::iterators::Pair<Rule>) -> AstNode {
+pub fn build_ast_from_pairs(pair: Pair) -> ProgramNode {
     match pair.as_rule() {
-        Rule::program => AstNode::Program(Box::new(build_program(pair))),
-        _ => panic!("Unsupported rule: {:?}", pair.as_rule()),
+        Rule::program => build_program(pair),
+        rule => panic!("Unsupported root rule: {:?}", rule),
     }
 }
 
-fn build_program(pair: pest::iterators::Pair<Rule>) -> ProgramNode {
-    let statements = pair
+fn build_program(pair: Pair) -> ProgramNode {
+    let rule = pair.as_rule();
+    let expressions = pair
         .into_inner()
         .filter_map(|p| match p.as_rule() {
-            Rule::statement => Some(build_statement(p)),
-            _ => None,
+            Rule::expression => Some(build_expression(p)),
+            Rule::EOI => None,
+            _ => panic!("Invalid node in program: {:?}", p.as_rule()),
         })
-        .collect::<Vec<StatementNode>>();
+        .collect::<Vec<ExpressionNode>>();
 
-    ProgramNode { statements }
+    return ProgramNode { expressions };
 }
 
-// Helper function to build a StatementNode from a statement rule
-fn build_statement(pair: pest::iterators::Pair<Rule>) -> StatementNode {
-    let inner = pair
-        .into_inner()
-        .next()
-        .expect("Statement must have content");
-
-    match inner.as_rule() {
-        Rule::integer => {
-            return StatementNode {
-                kind: StatementKind::Expr(Box::new(ExpressionNode {
-                    kind: ExpressionKind::Integer(
-                        inner
-                            .as_str()
-                            .trim()
-                            .parse::<i32>()
-                            .expect("Invalid integer"),
-                    ),
-                })),
-            };
-        }
-        Rule::block => StatementNode {
-            kind: StatementKind::Block(build_block(inner)),
-        },
-        Rule::func_definition => StatementNode {
-            kind: StatementKind::FuncDef(build_func_def(inner)),
-        },
-        Rule::expression => StatementNode {
-            kind: StatementKind::Expr(Box::new(build_expression(inner))),
-        },
-        Rule::statement => build_statement(inner),
-
-        Rule::c_import => StatementNode {
-            kind: StatementKind::CImport(inner.into_inner().next().unwrap().as_str().to_string()),
-        },
-
-        _ => panic!("Unsupported statement kind: {:?}", inner.as_rule()),
-    }
-}
-
-fn build_func_def(pair: pest::iterators::Pair<Rule>) -> FuncDefNode {
+fn build_expression(pair: Pair) -> ExpressionNode {
     let mut inner = pair.into_inner();
 
-    let block;
-    let params_list;
-    let name = inner.next().unwrap();
+    let expr = inner.next().expect("Expression has to have a child node");
 
-    if inner.len() == 2 {
-        let temp = inner.next().unwrap().into_inner();
+    let expression_kind = match expr.as_rule() {
+        Rule::var_decl => ExpressionKind::VarDecl(build_var_decl(expr)),
+        Rule::add_expr => ExpressionKind::AddExpr(build_add_expr(expr)),
+        _ => panic!("Invalid node in expression: {:?}", expr.as_rule()),
+    };
 
-        println!("TEMP {}", temp);
-
-        params_list = temp.map(|node| build_func_def_param(node)).collect();
-        block = inner.next().unwrap();
-    } else {
-        params_list = vec![];
-        block = inner.next().unwrap();
-    }
-
-    return FuncDefNode {
-        name: name.as_str().to_string(),
-        params: params_list,
-        body: build_block(block),
+    return ExpressionNode {
+        kind: expression_kind,
     };
 }
 
-fn build_func_def_param(pair: pest::iterators::Pair<Rule>) -> FuncParam {
+fn build_add_expr(pair: Pair) -> AddExprNode {
     let mut inner = pair.into_inner();
 
-    let name = inner.next().unwrap();
-    let param_type = inner.next().unwrap();
+    let left_pair = inner.next().unwrap();
+    let left = build_mul_expr(left_pair);
 
-    FuncParam {
-        name: name.as_str().to_string(),
-        param_type: param_type.as_str().to_string(),
+    let mut addent = vec![];
+    while inner.len() > 0 {
+        let op_pair = inner.next().unwrap();
+
+        let op = match op_pair.as_rule() {
+            Rule::add => AddOp::Add,
+            Rule::subtract => AddOp::Subtract,
+            rule => panic!("{:?}", rule),
+        };
+
+        let value = build_add_expr(inner.next().unwrap());
+
+        addent.push(AddExprPart { op, value });
+    }
+
+    AddExprNode { left, addent }
+}
+
+fn build_mul_expr(pair: Pair) -> MulExprNode {
+    let mut inner = pair.into_inner();
+
+    let primary_pair = inner.next().unwrap();
+    let primary = build_primary(primary_pair);
+
+    MulExprNode {
+        left: primary,
+        factor: vec![],
     }
 }
 
-fn build_block(pair: pest::iterators::Pair<Rule>) -> BlockNode {
-    let statements = pair
+fn build_primary(pair: Pair) -> PrimaryNode {
+    PrimaryNode {
+        kind: PrimaryKind::IntLit(pair.as_str().parse().unwrap()),
+    }
+}
+
+fn build_var_decl(pair: Pair) -> VarDeclNode {
+    todo!()
+}
+
+fn build_func_def(pair: Pair) -> FuncDefNode {
+    let mut inner = pair.into_inner();
+
+    let name = inner
+        .next()
+        .expect("Function requires a name")
+        .as_str()
+        .to_string();
+    let mut param_def_list = None;
+    let mut return_type = None;
+    let mut body = None;
+
+    let next = inner.next().unwrap();
+
+    for node in inner {
+        match node.as_rule() {
+            Rule::param_def_list => param_def_list = Some(build_param_def_list(node)),
+            Rule::block => body = Some(build_block(node)),
+            Rule::return_type => return_type = Some(build_return_type(node)),
+            _ => panic!(),
+        };
+    }
+
+    return FuncDefNode {
+        name,
+        params: param_def_list.unwrap_or(vec![]),
+        body: body.unwrap(),
+        return_type,
+    };
+}
+
+fn build_block(pair: Pair) -> BlockNode {
+    let expressions = pair
         .into_inner()
-        .filter_map(|p| match p.as_rule() {
-            Rule::statement => Some(build_statement(p)),
-            _ => None,
+        .map(|n| match n.as_rule() {
+            Rule::expression => build_expression(n),
+            _ => panic!(),
         })
-        .collect::<Vec<StatementNode>>();
+        .collect();
 
-    return BlockNode { statements };
+    return BlockNode { expressions };
 }
 
-fn build_expression(pair: pest::iterators::Pair<Rule>) -> ExpressionNode {
-    let inner = pair
-        .into_inner()
-        .next()
-        .expect("Expression must have content");
-
-    match inner.as_rule() {
-        Rule::addition => ExpressionNode {
-            kind: build_calculation(inner, CalculationOperator::ADD),
-        },
-        Rule::subtraction => ExpressionNode {
-            kind: build_calculation(inner, CalculationOperator::SUB),
-        },
-        Rule::integer => {
-            let value = inner
-                .as_str()
-                .trim()
-                .parse::<i32>()
-                .expect("Invalid integer");
-            ExpressionNode {
-                kind: ExpressionKind::Addition(value, 0), // Treat standalone integer as an addition with 0
-            }
-        }
-        Rule::func_call => {
-            let mut nodes = inner.into_inner();
-
-            let function_name = nodes.next().unwrap();
-
-            let param_list = nodes.next();
-
-            if let Some(param_list) = param_list {
-                let mut expression_nodes = param_list.into_inner();
-
-                let mut expressions = vec![];
-                while let Some(param) = expression_nodes.next() {
-                    expressions.push(build_expression(param));
-                }
-
-                return ExpressionNode {
-                    kind: ExpressionKind::FuncCall(FuncCallNode {
-                        name: function_name.as_str().to_string(),
-                        params: expressions,
-                    }),
-                };
-            } else {
-                return ExpressionNode {
-                    kind: ExpressionKind::FuncCall(FuncCallNode {
-                        name: function_name.as_str().to_string(),
-                        params: vec![],
-                    }),
-                };
-            }
-        }
-
-        Rule::string_lit => {
-            return ExpressionNode {
-                kind: ExpressionKind::StringLit(inner.as_str().to_string()),
-            };
-        }
-
-        _ => panic!("Unsupported expression kind: {:?}", inner.as_rule()),
-    }
+fn build_param_def_list(pair: Pair) -> Vec<FuncParam> {
+    vec![]
 }
 
-enum CalculationOperator {
-    ADD,
-    SUB,
-}
-
-fn build_calculation(
-    pair: pest::iterators::Pair<Rule>,
-    operator: CalculationOperator,
-) -> ExpressionKind {
-    let mut inner_pairs = pair.into_inner();
-    let left = inner_pairs
-        .next()
-        .expect("Addition must have left integer")
-        .as_str()
-        .trim()
-        .parse::<i32>()
-        .expect("Invalid integer");
-    let right = inner_pairs
-        .next()
-        .expect("Addition must have right integer")
-        .as_str()
-        .trim()
-        .parse::<i32>()
-        .expect("Invalid integer");
-
-    match operator {
-        CalculationOperator::ADD => ExpressionKind::Addition(left, right),
-        CalculationOperator::SUB => ExpressionKind::Subtraction(left, right),
-    }
+fn build_return_type(pair: Pair) -> String {
+    "".to_string()
 }

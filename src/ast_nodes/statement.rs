@@ -31,7 +31,7 @@ impl fmt::Display for StatementKind {
             StatementKind::Expr(expr) => write!(f, "Expr{}", expr),
             StatementKind::Block(block) => {
                 writeln!(f, "Block(")?;
-                for stmt in &block.statements {
+                for stmt in &block.expressions {
                     writeln!(f, "  {}", stmt)?;
                 }
                 write!(f, ")")

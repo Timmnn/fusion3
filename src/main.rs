@@ -3,11 +3,11 @@ mod ast_builder;
 mod ast_nodes;
 mod codegen;
 mod parser;
-mod pratt;
 
 use ast_builder::build_ast_from_pairs;
 use clap::Parser as ClapParser;
 use codegen::gen_code;
+use colored::Colorize;
 use parser::{FusionParser, Rule};
 use pest::Parser;
 use sh::sh;
@@ -30,8 +30,6 @@ fn main() {
 
     let file_name = &args.input;
 
-    //println!("{:?} {:?}", &args.input, &args.output);
-
     let file_path = Path::new(file_name.as_str());
 
     let file_content = fs::read_to_string(file_path)
@@ -40,6 +38,9 @@ fn main() {
     let mut rules = FusionParser::parse(Rule::program, &file_content).unwrap();
 
     let pair = rules.next().unwrap();
+
+    println!("{}{}", "Pairs: \n".yellow(), pair);
+
     let ast = match pair.as_rule() {
         Rule::program => build_ast_from_pairs(pair),
         _ => panic!(
@@ -48,32 +49,41 @@ fn main() {
         ),
     };
 
-    println!("{}", ast);
-    println!("{:?}", ast);
+    println!("{}{}", "AST:\n".purple(), ast);
 
     let code = gen_code(ast);
 
-    let str = code.unwrap();
+    println!(
+        "\n\n{}\n--------------------\n{}\n--------------------\n\n",
+        "Generated C-Code:".green(),
+        code
+    );
 
-    println!("{}", str);
-
-    let output;
+    let formatter_output;
 
     if std::env::consts::OS == "windows" {
-        output = Command::new("powershell")
+        formatter_output = Command::new("powershell")
             .arg("-c")
-            .arg(format!("echo '{}' | clang-format", str))
+            .arg(format!("echo '{}' | clang-format", code))
             .output()
             .unwrap();
     } else {
-        output = Command::new("sh")
+        formatter_output = Command::new("sh")
             .arg("-c")
-            .arg(format!("echo '{}' | clang-format", str))
+            .arg(format!("echo '{}' | clang-format", code))
             .output()
             .unwrap();
     }
 
-    fs::write("output.c", output.stdout);
+    let formatted_code = String::from_utf8(formatter_output.stdout).unwrap();
+
+    println!(
+        "\n\n{}\n--------------------\n{}\n--------------------\n\n",
+        "Formatted C-Code:".on_green().black(),
+        formatted_code
+    );
+
+    fs::write("output.c", formatted_code).unwrap();
 
     sh!(gcc "output.c" "-o" {args.output});
     //sh!(rm "output.c");

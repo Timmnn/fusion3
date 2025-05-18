@@ -1,46 +1,55 @@
-// Whitespaces and comments
-comment    = _{ "//" ~ (!NEWLINE ~ ANY)* }
-WHITESPACE = _{ (" " | "\t" | "\n" | "\r" | comment)+ }
-NEWLINE    = _{ "\n" | "\r\n" }
-
-// Program structure
-program              = { SOI ~ expression ~ (expression_seperator ~ expression)* ~ expression_seperator* ~ EOI }
-expression_seperator = { NEWLINE | ";" }
-
+/*
+    --------------------------------------------------
+    WHITESPACES AND COMMENTS
+    --------------------------------------------------
+*/
+comment              = _{ "//" ~ (!NEWLINE ~ ANY)* }
+WHITESPACE           = _{ (" " | "\t" | "\n" | "\r" | comment)+ }
+NEWLINE              = _{ "\n" | "\r\n" }
+expression_seperator =  { NEWLINE | ";" }
+parameter_seperator  =  { NEWLINE | "," }
+/*
+    --------------------------------------------------
+    PROGRAM STRUCTURE
+    --------------------------------------------------
+*/
+program = { SOI ~ expression ~ (expression_seperator ~ expression)* ~ expression_seperator* ~ EOI }
 // A block creates a new scope and may return a value. like a function thats called instantly with every variable as a parameter.
 block = { "{" ~ (expression ~ NEWLINE?)* ~ "}" }
-
 // Identifiers
 ident = @{
     ((alpha ~ (alpha | digit | "_")*) | (digit ~ alpha ~ (alpha | digit | "_")*) | ("_" ~ alpha ~ (alpha | digit | "_")*))
 }
-alpha = _{ 'a'..'z' | 'A'..'Z' | "_" | "#" | "~" | "^" | "$" }
+alpha = _{ 'a'..'z' | 'A'..'Z' | "*" | "#" | "~" | "^" | "$" }
 digit = _{ '0'..'9' }
 
-// Terms are the top-level constructs (block, operation, literals, etc.). This is needed to stop left-recursive rules.
-expression = { term }
-term       = { func_definition | block | operation | integer_literal | string_literal | float_literal | func_call | struct_init | var_declaration | assignment }
+expression = { var_decl | assignment | add_expr }
 
-// Operations are split by precedence levels to avoid left recursion
-operation = { additive_expr }
 
-// Additive expressions (lowest precedence: +, -, or, and)
-additive_expr = { multiplicative_expr ~ ((add | subtract | or | and) ~ multiplicative_expr)* }
+add_expr = { mul_expr ~ ((add | subtract) ~ mul_expr)* }
 
-// Multiplicative expressions (higher precedence: *, /)
-multiplicative_expr = { comparison_expr ~ ((multiply | divide) ~ comparison_expr)* }
+mul_expr = { primary ~ ((multiply | divide) ~ primary)* }
 
-// Comparison expressions (highest precedence: ==, !=, >, <, >=, <=)
-comparison_expr = { primary ~ ((equal | unequal | greater_than | less_than | greater_or_equal | less_or_equal) ~ primary)* }
+primary = {
+    int_lit | 
+    float_lit | 
+    str_lit | 
+    func_call | 
+    struct_init | 
+    block | 
+    func_def | 
+    "(" ~ expression ~ ")"
+}
 
-// Primary expressions (base units: literals, blocks, identifiers, parenthesized expressions)
-primary = { integer_literal | string_literal | float_literal | block | func_call | struct_init | ident | "(" ~ expression ~ ")" }
-
-// Operator definitions
+/*
+    --------------------------------------------------
+    OPERATORS
+    --------------------------------------------------
+*/
 add              = { "+" }
 subtract         = { "-" }
-divide           = { "/" }
 multiply         = { "*" }
+divide           = { "/" }
 and              = { "and" }
 or               = { "or" }
 equal            = { "==" }
@@ -49,36 +58,54 @@ less_than        = { "<" }
 unequal          = { "!=" }
 greater_or_equal = { ">=" }
 less_or_equal    = { "<=" }
-
-// Value literals
-integer_literal = @{ "-"? ~ ASCII_DIGIT+ }
-string_literal  =  { "\"" ~ inner_string ~ "\"" }
-inner_string    = @{
+/*
+    --------------------------------------------------
+    VALUE LITERALS
+    --------------------------------------------------
+*/
+int_lit      = @{ "-"? ~ ASCII_DIGIT+ }
+str_lit      =  { "\"" ~ inner_string ~ "\"" }
+inner_string = @{
     (!("\"" | "\\") ~ ANY | "\\" ~ ("\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t") | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4}))*
 }
-float_literal   = @{ ASCII_DIGIT* ~ "." ~ ASCII_DIGIT+ }
-
-// Functions
-func_definition = { "fn" ~ ident ~ "(" ~ param_def_list? ~ ")" ~ return_type? ~ block }
-param_def_list  = { field_def ~ ("," ~ field_def)* }
-return_type     = { ":" ~ ident }
-func_call       = { ident ~ "(" ~ param_list? ~ ")" }
-param_list      = { expression ~ ("," ~ expression)* }
-
-// Structs
-struct_definition         =  { "type" ~ ident ~ "=" ~ "{" ~ struct_definition_content? ~ "}" }
-struct_definition_content =  { field_def ~ ("," ~ field_def)* }
-field_ident               = @{ (alpha | digit)+ }
-field_def                 =  { field_ident ~ ":" ~ ident }
-struct_init               =  { ident ~ "{" ~ struct_field_init ~ ("," ~ struct_field_init)* }
-struct_field_init         =  { ident ~ ":" ~ expression }
-
-// Type alias
+float_lit    = @{ ASCII_DIGIT* ~ "." ~ ASCII_DIGIT+ }
+/*
+    --------------------------------------------------
+    FUNCTIONS
+    --------------------------------------------------
+*/
+func_def       = { "fn" ~ ident ~ "(" ~ param_def_list? ~ ")" ~ return_type? ~ block }
+return_type    = { ident }
+param_def_list = { field_def ~ ("," ~ field_def)* }
+func_call      = { ident ~ "(" ~ param_list? ~ ")" }
+param_list     = { expression ~ ("," ~ expression)* }
+/*
+    --------------------------------------------------
+    STRUCTS
+    --------------------------------------------------
+*/
+struct_def         =  { "type" ~ ident ~ "=" ~ "{" ~ struct_def_content? ~ "}" }
+struct_def_content =  { field_def ~ ("," ~ field_def)* }
+field_ident        = @{ (alpha | digit)+ }
+field_def          =  { field_ident ~ ":" ~ ident }
+struct_init        =  { ident ~ "{" ~ struct_field_init ~ ("," ~ struct_field_init)* ~ "}" }
+struct_field_init  =  { ident ~ ":" ~ expression }
+/*
+    --------------------------------------------------
+    TYPE ALIAS
+    --------------------------------------------------
+*/
 type_alias = { "type" ~ ident ~ "=" ~ ident }
-
-// Variable assignments
-assignment      = { ident ~ "=" ~ expression }
-var_declaration = { "let" ~ ident ~ "=" ~ expression }
-
-// C import
-c_import = { ("_c_import" | "*c*import") ~ string_literal }
+/*
+    --------------------------------------------------
+    VARIABLE ASSIGNMENTS
+    --------------------------------------------------
+*/
+assignment = _{ ident ~ "=" ~ expression }
+var_decl   = { "let" ~ ident ~ "=" ~ expression }
+/*
+    --------------------------------------------------
+    C IMPORT
+    --------------------------------------------------
+*/
+c_import = { ("_c_import" | "*c*import") ~ str_lit }
