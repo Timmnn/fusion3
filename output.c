@@ -1,4 +1,6 @@
+#include <stdio.h>
+int double_val(int val) { return val * 2; }
 int main() {
-  1 + 2 * 5 + 5;
+  double_val(5);
   return 0;
 }

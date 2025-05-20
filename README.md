@@ -12,8 +12,8 @@ Semicolons are optional unless multiple expressions appear on the same line, whe
 a := 5; b := 6; println("Hello World")
 c := 1
 d := 2
-fn add(x: i32, y: i32) i32 { return x + y }
-fn sub(x: i32 y: i32) i32 { return x - y } // Inline args without comma
+fn add(x i32, y i32) i32 { return x + y }
+fn sub(x i32 y: i32) i32 { return x - y } // Inline args without comma
 ```
 
 ### Variables

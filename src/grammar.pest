@@ -3,19 +3,20 @@
     WHITESPACES AND COMMENTS
     --------------------------------------------------
 */
-comment              = _{ "//" ~ (!NEWLINE ~ ANY)* }
-WHITESPACE           = _{ (" " | "\t" | "\n" | "\r" | comment)+ }
+comment    = _{ "//" ~ (!NEWLINE ~ ANY)* }
+WHITESPACE = _{ (" " | "\t" | comment)+ }
+
 NEWLINE              = _{ "\n" | "\r\n" }
-expression_seperator =  { NEWLINE | ";" }
+expression_seperator = _{ NEWLINE | ";" }
 parameter_seperator  =  { NEWLINE | "," }
 /*
     --------------------------------------------------
     PROGRAM STRUCTURE
     --------------------------------------------------
 */
-program = { SOI ~ expression ~ (expression_seperator ~ expression)* ~ expression_seperator* ~ EOI }
+program = { SOI ~ expression ~ (expression_seperator+ ~ expression)* ~ expression_seperator* ~ EOI }
 // A block creates a new scope and may return a value. like a function thats called instantly with every variable as a parameter.
-block = { "{" ~ (expression ~ NEWLINE?)* ~ "}" }
+block = { "{" ~ expression? ~ (expression_seperator+ ~ expression)* ~ expression_seperator* ~ "}" }
 // Identifiers
 ident = @{
     ((alpha ~ (alpha | digit | "_")*) | (digit ~ alpha ~ (alpha | digit | "_")*) | ("_" ~ alpha ~ (alpha | digit | "_")*))
@@ -23,11 +24,15 @@ ident = @{
 alpha = _{ 'a'..'z' | 'A'..'Z' | "*" | "#" | "~" | "^" | "$" }
 digit = _{ '0'..'9' }
 
-expression = { func_def | var_decl | assignment | add_expr }
+expression = {  c_import | func_def | return_expr | var_decl | assignment | add_expr | func_call | var_access }
 
 add_expr = { mul_expr ~ ((add | subtract) ~ mul_expr)* }
 
 mul_expr = { primary ~ ((multiply | divide) ~ primary)* }
+
+var_access = { ident }
+
+return_expr = { "return" ~ expression }
 
 primary = {
     int_lit
@@ -36,6 +41,7 @@ primary = {
   | func_call
   | struct_init
   | block
+  | var_access
   | func_def
   | "(" ~ expression ~ ")"
 }
@@ -107,4 +113,4 @@ var_decl   =  { "let" ~ ident ~ "=" ~ expression }
     C IMPORT
     --------------------------------------------------
 */
-c_import = { ("_c_import" | "*c*import") ~ str_lit }
+c_import = { "_c_import" ~ str_lit }

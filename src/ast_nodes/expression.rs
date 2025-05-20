@@ -3,9 +3,10 @@ use super::{
     func_call::FuncCallNode,
     func_def::FuncDefNode,
     term::{StructInitNode, TermNode, VarDeclNode},
+    var_access::VarAccessNode,
 };
 use colored::Colorize;
-use std::fmt::{self, Display, Formatter, Result};
+use std::fmt::{self, Debug, Display, Formatter, Result};
 
 // Define a constant for indentation increment
 // Use a dedicated struct to track indentation level
@@ -60,6 +61,21 @@ pub enum ExpressionKind {
     VarDecl(VarDeclNode),
     AddExpr(AddExprNode),
     FuncDef(FuncDefNode),
+    ReturnExpr(ReturnExprNode),
+    CImport(String),
+}
+
+#[derive(Debug, Clone)]
+pub struct ReturnExprNode {
+    pub expression: Box<ExpressionNode>,
+}
+
+impl IndentDisplay for ReturnExprNode {
+    fn fmt_with_indent(&self, f: &mut Formatter<'_>, indent: Indent) -> Result {
+        self.expression.fmt_with_indent(f, indent.increment(1))?;
+
+        Ok(())
+    }
 }
 
 impl IndentDisplay for ExpressionKind {
@@ -91,6 +107,25 @@ impl IndentDisplay for ExpressionKind {
                     "FuncDef".on_truecolor(10, 150, 200).black()
                 )?;
                 node.fmt_with_indent(f, indent.increment(2))
+            }
+            ExpressionKind::ReturnExpr(node) => {
+                writeln!(
+                    f,
+                    "{}{}",
+                    indent.as_str(),
+                    "ReturnExpr".on_truecolor(50, 150, 200).black()
+                )?;
+                node.fmt_with_indent(f, indent.increment(2))
+            }
+            ExpressionKind::CImport(string) => {
+                writeln!(
+                    f,
+                    "{}{}",
+                    indent.as_str(),
+                    "CImport()".on_truecolor(50, 150, 200).black()
+                )?;
+
+                writeln!(f, "{}{}", indent.increment(1).as_str(), string)
             }
         }
     }
@@ -260,6 +295,10 @@ impl IndentDisplay for PrimaryNode {
                 writeln!(f, "{}Expression:", inner_indent.as_str())?;
                 expr.fmt_with_indent(f, inner_indent.increment(1))
             }
+            PrimaryKind::VarAccess(expr) => {
+                writeln!(f, "{}VarAccess:", inner_indent.as_str())?;
+                expr.fmt_with_indent(f, inner_indent.increment(1))
+            }
         }
     }
 }
@@ -274,6 +313,7 @@ pub enum PrimaryKind {
     Block(BlockNode),
     FuncDef(FuncDefNode),
     Expression(Box<ExpressionNode>),
+    VarAccess(VarAccessNode),
 }
 
 #[derive(Debug, Clone)]
@@ -323,7 +363,11 @@ impl IndentDisplay for VarDeclNode {
 
 impl IndentDisplay for FuncCallNode {
     fn fmt_with_indent(&self, f: &mut Formatter<'_>, indent: Indent) -> Result {
-        writeln!(f, "{}FuncCallCONTENT", indent.as_str())
+        self.params.iter().for_each(|p| {
+            p.fmt_with_indent(f, indent.increment(1));
+        });
+
+        Ok(())
     }
 }
 
@@ -341,6 +385,12 @@ impl IndentDisplay for BlockNode {
 
 impl IndentDisplay for FuncDefNode {
     fn fmt_with_indent(&self, f: &mut Formatter<'_>, indent: Indent) -> Result {
-        writeln!(f, "{}", indent.as_str())
+        writeln!(f, "{}", indent.as_str());
+
+        self.params.iter().for_each(|p| {
+            p.fmt_with_indent(f, indent.increment(1));
+        });
+
+        Ok(())
     }
 }

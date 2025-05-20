@@ -5,13 +5,14 @@ use crate::ast_nodes::{
     calc::{Addent, CalculationKind, CalculationNode, Factor, MultiplicationNode},
     expression::{
         AddExprNode, AddExprPart, AddOp, ExpressionKind, ExpressionNode, MulExprNode, MulExprPart,
-        MulOp, PrimaryKind, PrimaryNode,
+        MulOp, PrimaryKind, PrimaryNode, ReturnExprNode,
     },
     func_call::FuncCallNode,
     func_def::{FuncDefNode, FuncParam},
     operation::{OperationKind, OperationNode},
     program::ProgramNode,
     term::{TermKind, TermNode, VarDeclNode},
+    var_access::VarAccessNode,
 };
 use crate::parser::{FusionParser, Rule};
 
@@ -47,12 +48,29 @@ fn build_expression(pair: Pair) -> ExpressionNode {
         Rule::var_decl => ExpressionKind::VarDecl(build_var_decl(expr)),
         Rule::add_expr => ExpressionKind::AddExpr(build_add_expr(expr)),
         Rule::func_def => ExpressionKind::FuncDef(build_func_def(expr)),
+        Rule::return_expr => ExpressionKind::ReturnExpr(build_return_expr(expr)),
+        Rule::c_import => ExpressionKind::CImport(build_c_import(expr)),
         _ => panic!("Invalid node in expression: {:?}", expr.as_rule()),
     };
 
     return ExpressionNode {
         kind: expression_kind,
     };
+}
+
+fn build_c_import(pair: Pair) -> String {
+    let string = pair.into_inner().next().unwrap().as_str().to_string();
+
+    string[1..(string.len() - 1)].to_string()
+}
+fn build_return_expr(pair: Pair) -> ReturnExprNode {
+    let mut inner = pair.into_inner();
+
+    let expr = build_expression(inner.next().unwrap());
+
+    ReturnExprNode {
+        expression: Box::new(expr),
+    }
 }
 
 fn build_add_expr(pair: Pair) -> AddExprNode {
@@ -106,9 +124,45 @@ fn build_mul_expr(pair: Pair) -> MulExprNode {
 }
 
 fn build_primary(pair: Pair) -> PrimaryNode {
-    PrimaryNode {
-        kind: PrimaryKind::IntLit(pair.as_str().parse().unwrap()),
-    }
+    println!("????{}", pair);
+
+    let mut inner = pair.into_inner();
+
+    let primary = inner.next().unwrap();
+
+    let kind = match primary.as_rule() {
+        Rule::int_lit => PrimaryKind::IntLit(primary.as_str().parse().unwrap()),
+        Rule::func_call => PrimaryKind::FuncCall(build_func_call(primary)),
+        Rule::var_access => PrimaryKind::VarAccess(build_var_access(primary)),
+        _ => todo!(),
+    };
+
+    PrimaryNode { kind }
+}
+
+fn build_var_access(pair: Pair) -> VarAccessNode {
+    let mut inner = pair.into_inner();
+
+    let name = inner.next().unwrap().as_str().to_string();
+
+    VarAccessNode { name }
+}
+
+fn build_func_call(pair: Pair) -> FuncCallNode {
+    let mut inner = pair.into_inner();
+
+    let name = inner.next().unwrap().as_str().to_string();
+
+    println!("?aa {}", inner);
+
+    let mut param_list = inner.next().unwrap();
+
+    let params = param_list
+        .into_inner()
+        .map(|e| build_expression(e))
+        .collect();
+
+    FuncCallNode { name, params }
 }
 
 fn build_var_decl(pair: Pair) -> VarDeclNode {
@@ -152,7 +206,8 @@ fn build_block(pair: Pair) -> BlockNode {
         .into_inner()
         .map(|n| match n.as_rule() {
             Rule::expression => build_expression(n),
-            _ => panic!(),
+
+            _ => panic!("Invalid node in block: {:?}", n.as_rule()),
         })
         .collect();
 
@@ -160,7 +215,17 @@ fn build_block(pair: Pair) -> BlockNode {
 }
 
 fn build_param_def_list(pair: Pair) -> Vec<FuncParam> {
-    vec![]
+    let mut inner = pair.into_inner();
+
+    inner.map(|p| build_field_def(p)).collect()
+}
+
+fn build_field_def(pair: Pair) -> FuncParam {
+    let mut inner = pair.into_inner();
+    FuncParam {
+        name: inner.next().unwrap().as_str().to_string(),
+        param_type: inner.next().unwrap().as_str().to_string(),
+    }
 }
 
 fn build_return_type(pair: Pair) -> String {

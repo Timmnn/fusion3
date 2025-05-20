@@ -1,2 +1,7 @@
-fn test(){
+_c_import "<stdio.h>"
+
+fn double_val(val: int){
+	return val * 2
 }
+
+double_val(5)

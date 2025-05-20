@@ -6,5 +6,6 @@ pub mod func_def;
 pub mod operation;
 pub mod program;
 pub mod term;
+pub mod var_access;
 
 pub const INDENT: &str = "  ";
