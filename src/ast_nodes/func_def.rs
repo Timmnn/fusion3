@@ -15,9 +15,3 @@ pub struct FuncParam {
     pub name: String,
     pub param_type: String,
 }
-
-impl fmt::Display for FuncDefNode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "FuncDef(NAME)")
-    }
-}

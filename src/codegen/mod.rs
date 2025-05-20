@@ -3,7 +3,8 @@ use std::collections::HashMap;
 use crate::ast_nodes::{
     block::BlockNode,
     expression::{
-        AddExprNode, ExpressionKind, ExpressionNode, MulExprNode, PrimaryKind, PrimaryNode,
+        AddExprNode, AddOp, ExpressionKind, ExpressionNode, MulExprNode, MulOp, PrimaryKind,
+        PrimaryNode,
     },
     func_call::FuncCallNode,
     func_def::{FuncDefNode, FuncParam},
@@ -57,18 +58,34 @@ fn walk_expression(expr: ExpressionNode, ctx: &mut Context) -> String {
 }
 
 fn walk_add_expr(add: AddExprNode, ctx: &mut Context) -> String {
-    let left_code = walk_mul_expr_node(add.left, ctx);
+    let mut left_code = walk_mul_expr_node(add.left, ctx);
+
+    for addent in add.addent {
+        left_code += match addent.op {
+            AddOp::Add => format!("+{}", walk_mul_expr_node(addent.value, ctx)),
+            AddOp::Subtract => format!("-{}", walk_mul_expr_node(addent.value, ctx)),
+        }
+        .as_str();
+    }
 
     return left_code;
 }
 
 fn walk_mul_expr_node(mul: MulExprNode, ctx: &mut Context) -> String {
-    let left_code = walk_primary(mul.left);
+    let mut left_code = walk_primary(mul.left, ctx);
+
+    for factor in mul.factor {
+        left_code += match factor.op {
+            MulOp::Multiply => format!("*{}", walk_primary(factor.value, ctx)),
+            MulOp::Divide => format!("/{}", walk_primary(factor.value, ctx)),
+        }
+        .as_str();
+    }
 
     return left_code;
 }
 
-fn walk_primary(primary: PrimaryNode) -> String {
+fn walk_primary(primary: PrimaryNode, ctx: &mut Context) -> String {
     match primary.kind {
         PrimaryKind::IntLit(val) => val.to_string(),
         _ => todo!(),

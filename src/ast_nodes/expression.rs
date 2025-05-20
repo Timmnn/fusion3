@@ -8,7 +8,6 @@ use colored::Colorize;
 use std::fmt::{self, Display, Formatter, Result};
 
 // Define a constant for indentation increment
-const INDENT_SIZE: usize = 2;
 // Use a dedicated struct to track indentation level
 #[derive(Debug, Clone, Copy)]
 pub struct Indent(pub usize);
@@ -18,13 +17,13 @@ impl Indent {
         Indent(0)
     }
 
-    pub fn increment(&self) -> Self {
-        Indent(self.0 + INDENT_SIZE)
+    pub fn increment(&self, increment: usize) -> Self {
+        Indent(self.0 + increment)
     }
 
     // Helper to get indent as string
     pub fn as_str(&self) -> String {
-        " ".repeat(self.0)
+        "|  ".repeat(self.0)
     }
 }
 
@@ -44,9 +43,9 @@ impl IndentDisplay for ExpressionNode {
             f,
             "{}{}",
             indent.as_str(),
-            "Expression".on_color("#fc627d").black()
+            "Expression".on_truecolor(252, 98, 125).black()
         )?;
-        self.kind.fmt_with_indent(f, indent.increment())
+        self.kind.fmt_with_indent(f, indent.increment(2))
     }
 }
 
@@ -60,6 +59,7 @@ impl Display for ExpressionNode {
 pub enum ExpressionKind {
     VarDecl(VarDeclNode),
     AddExpr(AddExprNode),
+    FuncDef(FuncDefNode),
 }
 
 impl IndentDisplay for ExpressionKind {
@@ -72,16 +72,25 @@ impl IndentDisplay for ExpressionKind {
                     indent.as_str(),
                     "AddExpr".on_truecolor(100, 149, 237).black()
                 )?;
-                node.fmt_with_indent(f, indent.increment())
+                node.fmt_with_indent(f, indent.increment(2))
             }
             ExpressionKind::VarDecl(node) => {
                 writeln!(
                     f,
                     "{}{}",
                     indent.as_str(),
-                    "VarDecl".on_color("#32CD32").black()
+                    "VarDecl".on_truecolor(100, 150, 200).black()
                 )?;
-                node.fmt_with_indent(f, indent.increment())
+                node.fmt_with_indent(f, indent.increment(2))
+            }
+            ExpressionKind::FuncDef(node) => {
+                writeln!(
+                    f,
+                    "{}{}",
+                    indent.as_str(),
+                    "FuncDef".on_truecolor(10, 150, 200).black()
+                )?;
+                node.fmt_with_indent(f, indent.increment(2))
             }
         }
     }
@@ -102,15 +111,20 @@ impl IndentDisplay for AddExprNode {
             indent.as_str(),
             "Left".black().on_truecolor(200, 177, 54)
         )?;
-        self.left.fmt_with_indent(f, indent.increment())?;
+        self.left.fmt_with_indent(f, indent.increment(1))?;
 
         // Display addents if any
         if !self.addent.is_empty() {
-            writeln!(f, "{}Addents:", indent.as_str())?;
-            let inner_indent = indent.increment();
+            writeln!(
+                f,
+                "{}{}",
+                indent.as_str(),
+                "Addents".on_truecolor(128, 180, 12).black(),
+            )?;
+            let inner_indent = indent.increment(1);
             for (i, part) in self.addent.iter().enumerate() {
                 writeln!(f, "{}[{}]:", inner_indent.as_str(), i)?;
-                part.fmt_with_indent(f, inner_indent.increment())?;
+                part.fmt_with_indent(f, inner_indent.increment(1))?;
             }
         }
 
@@ -121,7 +135,7 @@ impl IndentDisplay for AddExprNode {
 #[derive(Debug, Clone)]
 pub struct MulExprPart {
     pub op: MulOp,
-    pub value: MulExprNode,
+    pub value: PrimaryNode,
 }
 
 impl IndentDisplay for MulExprPart {
@@ -130,18 +144,18 @@ impl IndentDisplay for MulExprPart {
             f,
             "{}{}: {}",
             indent.as_str(),
-            "Operator".black().on_truecolor(44, 78, 211),
+            "Operator".black().on_truecolor(199, 78, 211),
             self.op
         )?;
         writeln!(f, "{}Value:", indent.as_str())?;
-        self.value.fmt_with_indent(f, indent.increment())
+        self.value.fmt_with_indent(f, indent.increment(2))
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct AddExprPart {
     pub op: AddOp,
-    pub value: AddExprNode,
+    pub value: MulExprNode,
 }
 
 impl IndentDisplay for AddExprPart {
@@ -150,11 +164,11 @@ impl IndentDisplay for AddExprPart {
             f,
             "{}{}({})",
             indent.as_str(),
-            "Operator".black().on_truecolor(44, 78, 211),
+            "Operator".black().on_truecolor(199, 78, 211),
             self.op
         )?;
         writeln!(f, "{}Value:", indent.as_str())?;
-        self.value.fmt_with_indent(f, indent.increment())
+        self.value.fmt_with_indent(f, indent.increment(2))
     }
 }
 
@@ -173,21 +187,21 @@ impl IndentDisplay for MulExprNode {
             "MulExpr".on_truecolor(255, 165, 0).black()
         )?;
 
-        let inner_indent = indent.increment();
+        let inner_indent = indent.increment(1);
         writeln!(
             f,
             "{}{}:",
             inner_indent.as_str(),
             "Left".black().on_truecolor(200, 177, 54)
         )?;
-        self.left.fmt_with_indent(f, inner_indent.increment())?;
+        self.left.fmt_with_indent(f, inner_indent.increment(1))?;
 
         if !self.factor.is_empty() {
             writeln!(f, "{}Factors:", inner_indent.as_str())?;
-            let factors_indent = inner_indent.increment();
+            let factors_indent = inner_indent.increment(1);
             for (i, factor) in self.factor.iter().enumerate() {
                 writeln!(f, "{}[{}]:", factors_indent.as_str(), i)?;
-                factor.fmt_with_indent(f, factors_indent.increment())?;
+                factor.fmt_with_indent(f, factors_indent.increment(1))?;
             }
         }
 
@@ -209,7 +223,7 @@ impl IndentDisplay for PrimaryNode {
             "Primary".on_truecolor(147, 112, 219).black()
         )?;
 
-        let inner_indent = indent.increment();
+        let inner_indent = indent.increment(1);
         match &self.kind {
             PrimaryKind::IntLit(val) => {
                 writeln!(
@@ -228,23 +242,23 @@ impl IndentDisplay for PrimaryNode {
             }
             PrimaryKind::FuncCall(node) => {
                 writeln!(f, "{}FunctionCall:", inner_indent.as_str())?;
-                node.fmt_with_indent(f, inner_indent.increment())
+                node.fmt_with_indent(f, inner_indent.increment(1))
             }
             PrimaryKind::StructInit(node) => {
                 writeln!(f, "{}StructInit:", inner_indent.as_str())?;
-                node.fmt_with_indent(f, inner_indent.increment())
+                node.fmt_with_indent(f, inner_indent.increment(1))
             }
             PrimaryKind::Block(node) => {
                 writeln!(f, "{}Block:", inner_indent.as_str())?;
-                node.fmt_with_indent(f, inner_indent.increment())
+                node.fmt_with_indent(f, inner_indent.increment(1))
             }
             PrimaryKind::FuncDef(node) => {
                 writeln!(f, "{}FunctionDef:", inner_indent.as_str())?;
-                node.fmt_with_indent(f, inner_indent.increment())
+                node.fmt_with_indent(f, inner_indent.increment(1))
             }
             PrimaryKind::Expression(expr) => {
                 writeln!(f, "{}Expression:", inner_indent.as_str())?;
-                expr.fmt_with_indent(f, inner_indent.increment())
+                expr.fmt_with_indent(f, inner_indent.increment(1))
             }
         }
     }
@@ -300,7 +314,7 @@ impl IndentDisplay for VarDeclNode {
         // Implementation would depend on the actual structure of VarDeclNode
         writeln!(f, "{}Name: {}", indent.as_str(), self.name)?;
         writeln!(f, "{}Value:", indent.as_str())?;
-        self.value.fmt_with_indent(f, indent.increment())
+        self.value.fmt_with_indent(f, indent.increment(1))
     }
 }
 
@@ -309,24 +323,24 @@ impl IndentDisplay for VarDeclNode {
 
 impl IndentDisplay for FuncCallNode {
     fn fmt_with_indent(&self, f: &mut Formatter<'_>, indent: Indent) -> Result {
-        writeln!(f, "{}FuncCall", indent.as_str())
+        writeln!(f, "{}FuncCallCONTENT", indent.as_str())
     }
 }
 
 impl IndentDisplay for StructInitNode {
     fn fmt_with_indent(&self, f: &mut Formatter<'_>, indent: Indent) -> Result {
-        writeln!(f, "{}StructInit", indent.as_str())
+        writeln!(f, "{}StructInitCONTENT", indent.as_str())
     }
 }
 
 impl IndentDisplay for BlockNode {
     fn fmt_with_indent(&self, f: &mut Formatter<'_>, indent: Indent) -> Result {
-        writeln!(f, "{}Block", indent.as_str())
+        writeln!(f, "{}BLOCKCONTENT", indent.as_str())
     }
 }
 
 impl IndentDisplay for FuncDefNode {
     fn fmt_with_indent(&self, f: &mut Formatter<'_>, indent: Indent) -> Result {
-        writeln!(f, "{}FuncDef", indent.as_str())
+        writeln!(f, "{}", indent.as_str())
     }
 }

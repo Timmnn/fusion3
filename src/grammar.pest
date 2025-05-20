@@ -23,22 +23,21 @@ ident = @{
 alpha = _{ 'a'..'z' | 'A'..'Z' | "*" | "#" | "~" | "^" | "$" }
 digit = _{ '0'..'9' }
 
-expression = { var_decl | assignment | add_expr }
-
+expression = { func_def | var_decl | assignment | add_expr }
 
 add_expr = { mul_expr ~ ((add | subtract) ~ mul_expr)* }
 
 mul_expr = { primary ~ ((multiply | divide) ~ primary)* }
 
 primary = {
-    int_lit | 
-    float_lit | 
-    str_lit | 
-    func_call | 
-    struct_init | 
-    block | 
-    func_def | 
-    "(" ~ expression ~ ")"
+    int_lit
+  | float_lit
+  | str_lit
+  | func_call
+  | struct_init
+  | block
+  | func_def
+  | "(" ~ expression ~ ")"
 }
 
 /*
@@ -102,7 +101,7 @@ type_alias = { "type" ~ ident ~ "=" ~ ident }
     --------------------------------------------------
 */
 assignment = _{ ident ~ "=" ~ expression }
-var_decl   = { "let" ~ ident ~ "=" ~ expression }
+var_decl   =  { "let" ~ ident ~ "=" ~ expression }
 /*
     --------------------------------------------------
     C IMPORT
