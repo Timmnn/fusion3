@@ -4,8 +4,8 @@ use crate::ast_nodes::{
     block::BlockNode,
     calc::{Addent, CalculationKind, CalculationNode, Factor, MultiplicationNode},
     expression::{
-        AddExprNode, AddExprPart, AddOp, ExpressionKind, ExpressionNode, MulExprNode, MulExprPart,
-        MulOp, PrimaryKind, PrimaryNode, ReturnExprNode,
+        AddExprNode, AddExprPart, AddOp, CImportNode, ExpressionKind, ExpressionNode, MulExprNode,
+        MulExprPart, MulOp, PrimaryKind, PrimaryNode, ReturnExprNode,
     },
     func_call::FuncCallNode,
     func_def::{FuncDefNode, FuncParam},
@@ -50,6 +50,9 @@ fn build_expression(pair: Pair) -> ExpressionNode {
         Rule::func_def => ExpressionKind::FuncDef(build_func_def(expr)),
         Rule::return_expr => ExpressionKind::ReturnExpr(build_return_expr(expr)),
         Rule::c_import => ExpressionKind::CImport(build_c_import(expr)),
+        Rule::func_call => ExpressionKind::FuncCall(build_func_call(expr)),
+        Rule::int_lit => ExpressionKind::IntLit(expr.as_str().parse().unwrap()),
+        Rule::str_lit => ExpressionKind::StrLit(expr.as_str().replace("\\", "\\\\").to_string()),
         _ => panic!("Invalid node in expression: {:?}", expr.as_rule()),
     };
 
@@ -58,10 +61,12 @@ fn build_expression(pair: Pair) -> ExpressionNode {
     };
 }
 
-fn build_c_import(pair: Pair) -> String {
+fn build_c_import(pair: Pair) -> CImportNode {
     let string = pair.into_inner().next().unwrap().as_str().to_string();
 
-    string[1..(string.len() - 1)].to_string()
+    CImportNode {
+        module: string[1..(string.len() - 1)].to_string(),
+    }
 }
 fn build_return_expr(pair: Pair) -> ReturnExprNode {
     let mut inner = pair.into_inner();
@@ -78,8 +83,6 @@ fn build_add_expr(pair: Pair) -> AddExprNode {
 
     let left_pair = inner.next().unwrap();
     let left = build_mul_expr(left_pair);
-
-    println!("{}", inner);
 
     let mut addent = vec![];
     while inner.len() > 0 {
@@ -124,17 +127,15 @@ fn build_mul_expr(pair: Pair) -> MulExprNode {
 }
 
 fn build_primary(pair: Pair) -> PrimaryNode {
-    println!("????{}", pair);
-
     let mut inner = pair.into_inner();
 
     let primary = inner.next().unwrap();
 
     let kind = match primary.as_rule() {
-        Rule::int_lit => PrimaryKind::IntLit(primary.as_str().parse().unwrap()),
-        Rule::func_call => PrimaryKind::FuncCall(build_func_call(primary)),
         Rule::var_access => PrimaryKind::VarAccess(build_var_access(primary)),
-        _ => todo!(),
+        Rule::int_lit => PrimaryKind::IntLit(primary.as_str().parse().unwrap()),
+        Rule::str_lit => PrimaryKind::StrLit(primary.as_str().to_string()),
+        _ => todo!("{:?}", primary),
     };
 
     PrimaryNode { kind }
@@ -152,8 +153,6 @@ fn build_func_call(pair: Pair) -> FuncCallNode {
     let mut inner = pair.into_inner();
 
     let name = inner.next().unwrap().as_str().to_string();
-
-    println!("?aa {}", inner);
 
     let mut param_list = inner.next().unwrap();
 
@@ -181,10 +180,7 @@ fn build_func_def(pair: Pair) -> FuncDefNode {
     let mut return_type = None;
     let mut body = None;
 
-    println!("INNER {}", inner);
-
     for node in inner {
-        println!("NODE {}", node);
         match node.as_rule() {
             Rule::param_def_list => param_def_list = Some(build_param_def_list(node)),
             Rule::block => body = Some(build_block(node)),

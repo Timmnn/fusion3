@@ -22,7 +22,7 @@ pub struct FuncParam {
 
 impl IndentDisplay for FuncParam {
     fn fmt_with_indent(&self, f: &mut Formatter<'_>, indent: Indent) -> Result {
-        write!(f, "{}, {}", self.name, self.param_type);
+        write!(f, "{}{}, {}", indent.as_str(), self.name, self.param_type);
 
         Ok(())
     }

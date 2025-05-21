@@ -4,4 +4,14 @@ fn double_val(val: int){
 	return val * 2
 }
 
+fn println(str: string, val: int) {
+	printf("%s  %d\n", str, val)
+}
+
 double_val(5)
+println("Hello World", double_val(5))
+
+
+fn double_any<T>(value: T) T {
+	return T * 2
+}

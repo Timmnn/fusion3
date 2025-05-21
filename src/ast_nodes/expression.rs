@@ -44,7 +44,7 @@ impl IndentDisplay for ExpressionNode {
             f,
             "{}{}",
             indent.as_str(),
-            "Expression".on_truecolor(252, 98, 125).black()
+            "Expression".on_truecolor(200, 120, 125).black()
         )?;
         self.kind.fmt_with_indent(f, indent.increment(2))
     }
@@ -62,7 +62,22 @@ pub enum ExpressionKind {
     AddExpr(AddExprNode),
     FuncDef(FuncDefNode),
     ReturnExpr(ReturnExprNode),
-    CImport(String),
+    CImport(CImportNode),
+    FuncCall(FuncCallNode),
+    IntLit(i32),
+    StrLit(String),
+}
+
+#[derive(Debug, Clone)]
+pub struct CImportNode {
+    pub module: String,
+}
+impl IndentDisplay for CImportNode {
+    fn fmt_with_indent(&self, f: &mut Formatter<'_>, indent: Indent) -> Result {
+        write!(f, "{}{}", indent.as_str(), self.module);
+
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -80,53 +95,38 @@ impl IndentDisplay for ReturnExprNode {
 
 impl IndentDisplay for ExpressionKind {
     fn fmt_with_indent(&self, f: &mut Formatter<'_>, indent: Indent) -> Result {
-        match self {
-            ExpressionKind::AddExpr(node) => {
-                writeln!(
-                    f,
-                    "{}{}",
-                    indent.as_str(),
-                    "AddExpr".on_truecolor(100, 149, 237).black()
-                )?;
-                node.fmt_with_indent(f, indent.increment(2))
-            }
-            ExpressionKind::VarDecl(node) => {
-                writeln!(
-                    f,
-                    "{}{}",
-                    indent.as_str(),
-                    "VarDecl".on_truecolor(100, 150, 200).black()
-                )?;
-                node.fmt_with_indent(f, indent.increment(2))
-            }
-            ExpressionKind::FuncDef(node) => {
-                writeln!(
-                    f,
-                    "{}{}",
-                    indent.as_str(),
-                    "FuncDef".on_truecolor(10, 150, 200).black()
-                )?;
-                node.fmt_with_indent(f, indent.increment(2))
-            }
-            ExpressionKind::ReturnExpr(node) => {
-                writeln!(
-                    f,
-                    "{}{}",
-                    indent.as_str(),
-                    "ReturnExpr".on_truecolor(50, 150, 200).black()
-                )?;
-                node.fmt_with_indent(f, indent.increment(2))
-            }
-            ExpressionKind::CImport(string) => {
-                writeln!(
-                    f,
-                    "{}{}",
-                    indent.as_str(),
-                    "CImport()".on_truecolor(50, 150, 200).black()
-                )?;
+        let string = match self {
+            ExpressionKind::AddExpr(node) => "AddExpr".on_truecolor(100, 149, 237).black(),
+            ExpressionKind::VarDecl(node) => "VarDecl".on_truecolor(100, 150, 200).black(),
+            ExpressionKind::FuncDef(node) => "FuncDef".on_truecolor(10, 150, 200).black(),
+            ExpressionKind::ReturnExpr(node) => "ReturnExpr".on_truecolor(50, 150, 200).black(),
+            ExpressionKind::CImport(string) => "CImport()".on_truecolor(50, 150, 200).black(),
+            ExpressionKind::FuncCall(node) => "FuncCall()".on_truecolor(245, 184, 8).black(),
+            ExpressionKind::IntLit(int) => "IntLit()".on_truecolor(25, 67, 1).black(),
+            ExpressionKind::StrLit(str) => "StrLit()".on_truecolor(5, 67, 1).black(),
+        };
+        writeln!(f, "{}{}", indent.as_str(), string)?;
 
-                writeln!(f, "{}{}", indent.increment(1).as_str(), string)
-            }
+        match self {
+            ExpressionKind::AddExpr(node) => node.fmt_with_indent(f, indent.increment(2)),
+            ExpressionKind::VarDecl(node) => node.fmt_with_indent(f, indent.increment(2)),
+            ExpressionKind::FuncDef(node) => node.fmt_with_indent(f, indent.increment(2)),
+            ExpressionKind::ReturnExpr(node) => node.fmt_with_indent(f, indent.increment(2)),
+            ExpressionKind::CImport(node) => node.fmt_with_indent(f, indent.increment(2)),
+
+            ExpressionKind::FuncCall(node) => node.fmt_with_indent(f, indent.increment(2)),
+            ExpressionKind::StrLit(node) => writeln!(
+                f,
+                "{}{}",
+                indent.increment(1).as_str(),
+                "StrLit".on_truecolor(200, 120, 125).black()
+            ),
+            ExpressionKind::IntLit(node) => writeln!(
+                f,
+                "{}{}",
+                indent.increment(1).as_str(),
+                "IntLit".on_truecolor(200, 120, 125).black()
+            ),
         }
     }
 }
@@ -275,10 +275,6 @@ impl IndentDisplay for PrimaryNode {
             PrimaryKind::StrLit(val) => {
                 writeln!(f, "{}StringLiteral(\"{}\")", inner_indent.as_str(), val)
             }
-            PrimaryKind::FuncCall(node) => {
-                writeln!(f, "{}FunctionCall:", inner_indent.as_str())?;
-                node.fmt_with_indent(f, inner_indent.increment(1))
-            }
             PrimaryKind::StructInit(node) => {
                 writeln!(f, "{}StructInit:", inner_indent.as_str())?;
                 node.fmt_with_indent(f, inner_indent.increment(1))
@@ -305,15 +301,14 @@ impl IndentDisplay for PrimaryNode {
 
 #[derive(Debug, Clone)]
 pub enum PrimaryKind {
-    IntLit(i32),
     FloatLit(f32),
     StrLit(String),
-    FuncCall(FuncCallNode),
     StructInit(StructInitNode),
     Block(BlockNode),
     FuncDef(FuncDefNode),
     Expression(Box<ExpressionNode>),
     VarAccess(VarAccessNode),
+    IntLit(i32),
 }
 
 #[derive(Debug, Clone)]
@@ -385,12 +380,12 @@ impl IndentDisplay for BlockNode {
 
 impl IndentDisplay for FuncDefNode {
     fn fmt_with_indent(&self, f: &mut Formatter<'_>, indent: Indent) -> Result {
-        writeln!(f, "{}", indent.as_str());
-
         self.params.iter().for_each(|p| {
-            p.fmt_with_indent(f, indent.increment(1));
+            p.fmt_with_indent(f, indent);
         });
 
-        Ok(())
+        writeln!(f, "");
+
+        self.body.fmt_with_indent(f, indent.increment(1))
     }
 }
