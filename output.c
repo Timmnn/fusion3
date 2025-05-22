@@ -4,8 +4,11 @@ int double_val(int val) {
   return val * 2;
   ;
 };
-int println(string str, int val) { printf("%s  %d\n", str, val); };
-int double_any() {}
+int println(string str, int val) { printf("%s  %d\\n", str, val); };
+int double_any(T value) {
+  return val * 2;
+  ;
+}
 int main() {
   ;
   ;

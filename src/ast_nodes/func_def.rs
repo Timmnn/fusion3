@@ -12,6 +12,7 @@ pub struct FuncDefNode {
     pub params: Vec<FuncParam>,
     pub body: BlockNode,
     pub return_type: Option<String>,
+    pub generic_typing: Option<GenericTypingNode>,
 }
 
 #[derive(Debug, Clone)]
@@ -22,8 +23,11 @@ pub struct FuncParam {
 
 impl IndentDisplay for FuncParam {
     fn fmt_with_indent(&self, f: &mut Formatter<'_>, indent: Indent) -> Result {
-        write!(f, "{}{}, {}", indent.as_str(), self.name, self.param_type);
-
-        Ok(())
+        writeln!(f, "{}{}: {}", indent.as_str(), self.name, self.param_type)
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct GenericTypingNode {
+    pub types: Vec<String>,
 }

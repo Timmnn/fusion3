@@ -100,7 +100,9 @@ impl IndentDisplay for ExpressionKind {
             ExpressionKind::VarDecl(node) => "VarDecl".on_truecolor(100, 150, 200).black(),
             ExpressionKind::FuncDef(node) => "FuncDef".on_truecolor(10, 150, 200).black(),
             ExpressionKind::ReturnExpr(node) => "ReturnExpr".on_truecolor(50, 150, 200).black(),
-            ExpressionKind::CImport(string) => "CImport()".on_truecolor(50, 150, 200).black(),
+            ExpressionKind::CImport(node) => format!("CImport({})", node.module)
+                .on_truecolor(50, 150, 200)
+                .black(),
             ExpressionKind::FuncCall(node) => "FuncCall()".on_truecolor(245, 184, 8).black(),
             ExpressionKind::IntLit(int) => "IntLit()".on_truecolor(25, 67, 1).black(),
             ExpressionKind::StrLit(str) => "StrLit()".on_truecolor(5, 67, 1).black(),
@@ -112,7 +114,7 @@ impl IndentDisplay for ExpressionKind {
             ExpressionKind::VarDecl(node) => node.fmt_with_indent(f, indent.increment(2)),
             ExpressionKind::FuncDef(node) => node.fmt_with_indent(f, indent.increment(2)),
             ExpressionKind::ReturnExpr(node) => node.fmt_with_indent(f, indent.increment(2)),
-            ExpressionKind::CImport(node) => node.fmt_with_indent(f, indent.increment(2)),
+            ExpressionKind::CImport(node) => Ok(()),
 
             ExpressionKind::FuncCall(node) => node.fmt_with_indent(f, indent.increment(2)),
             ExpressionKind::StrLit(node) => writeln!(
@@ -374,14 +376,18 @@ impl IndentDisplay for StructInitNode {
 
 impl IndentDisplay for BlockNode {
     fn fmt_with_indent(&self, f: &mut Formatter<'_>, indent: Indent) -> Result {
-        writeln!(f, "{}BLOCKCONTENT", indent.as_str())
+        self.expressions.iter().for_each(|e| {
+            e.fmt_with_indent(f, indent);
+        });
+
+        Ok(())
     }
 }
 
 impl IndentDisplay for FuncDefNode {
     fn fmt_with_indent(&self, f: &mut Formatter<'_>, indent: Indent) -> Result {
         self.params.iter().for_each(|p| {
-            p.fmt_with_indent(f, indent);
+            let _ = p.fmt_with_indent(f, indent);
         });
 
         writeln!(f, "");

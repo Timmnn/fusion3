@@ -13,5 +13,5 @@ println("Hello World", double_val(5))
 
 
 fn double_any<T>(value: T) T {
-	return T * 2
+	return val * 2
 }

@@ -8,7 +8,7 @@ use crate::ast_nodes::{
         MulExprPart, MulOp, PrimaryKind, PrimaryNode, ReturnExprNode,
     },
     func_call::FuncCallNode,
-    func_def::{FuncDefNode, FuncParam},
+    func_def::{FuncDefNode, FuncParam, GenericTypingNode},
     operation::{OperationKind, OperationNode},
     program::ProgramNode,
     term::{TermKind, TermNode, VarDeclNode},
@@ -179,13 +179,15 @@ fn build_func_def(pair: Pair) -> FuncDefNode {
     let mut param_def_list = None;
     let mut return_type = None;
     let mut body = None;
+    let mut generic_typing = None;
 
     for node in inner {
         match node.as_rule() {
             Rule::param_def_list => param_def_list = Some(build_param_def_list(node)),
             Rule::block => body = Some(build_block(node)),
             Rule::return_type => return_type = Some(build_return_type(node)),
-            _ => panic!(),
+            Rule::generic_typing => generic_typing = Some(build_generic_typing(node)),
+            _ => panic!("{}", node),
         };
     }
 
@@ -193,8 +195,21 @@ fn build_func_def(pair: Pair) -> FuncDefNode {
         name,
         params: param_def_list.unwrap_or(vec![]),
         body: body.unwrap(),
+        generic_typing,
         return_type,
     };
+}
+
+fn build_generic_typing(pair: Pair) -> GenericTypingNode {
+    let mut inner = pair.into_inner();
+
+    let generic_params = inner
+        .map(|p| p.as_str().to_string())
+        .collect::<Vec<String>>();
+
+    GenericTypingNode {
+        types: generic_params,
+    }
 }
 
 fn build_block(pair: Pair) -> BlockNode {
