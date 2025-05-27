@@ -1,5 +1,3 @@
-use crate::ast_nodes::INDENT;
-
 use super::expression::ExpressionNode;
 use colored::Colorize;
 use std::fmt;
@@ -13,7 +11,7 @@ impl fmt::Display for ProgramNode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "{}", "Program".black().on_green()).unwrap();
         for stmt in &self.expressions {
-            writeln!(f, "{}{}", INDENT, stmt).unwrap();
+            writeln!(f, " {}", stmt).unwrap();
         }
         Ok(())
     }

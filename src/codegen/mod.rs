@@ -13,12 +13,19 @@ use crate::ast_nodes::{
     term::{TermKind, TermNode},
 };
 
+struct GenericFuncDeclaration {
+    node: FuncDefNode,
+    generic_params: Vec<String>,
+}
+
 struct Context {
     scope_stack: Vec<String>,
     current_scope: u32,
     function_declarations: Vec<String>,
+    pub generic_function_declarations: HashMap<String, GenericFuncDeclaration>,
     pub main_function_content: String,
     pub imports: Vec<String>,
+    pub generic_function_implementations: HashMap<Vec<String>, String>,
 }
 
 impl Context {
@@ -32,6 +39,8 @@ impl Default for Context {
         Self {
             scope_stack: vec![String::from("Global")],
             function_declarations: vec![],
+            generic_function_declarations: HashMap::new(),
+            generic_function_implementations: HashMap::new(),
             current_scope: 0,
             main_function_content: String::from(""),
             imports: vec![],
@@ -50,11 +59,18 @@ pub fn gen_code(program: ProgramNode) -> String {
 
     let default_type_defs = vec!["typedef char* string;"];
 
+    println!("GEN {:?}", ctx.generic_function_implementations);
+
     return format!(
-        "{}{}{}{}",
+        "{}{}{}{}{}",
         default_type_defs.join(";"),
         ctx.imports.join(";"),
         ctx.function_declarations.join(";"),
+        ctx.generic_function_implementations
+            .iter()
+            .map(|(_, f)| f.clone())
+            .collect::<Vec<_>>()
+            .join(";"),
         main_function
     );
 }
@@ -72,7 +88,7 @@ fn walk_expression(expr: ExpressionNode, ctx: &mut Context) -> String {
         ExpressionKind::AddExpr(node) => walk_add_expr(node, ctx),
 
         ExpressionKind::FuncDef(node) => {
-            walk_func_def(node, ctx);
+            walk_func_def(node, ctx, false);
 
             String::from("")
         }
@@ -140,14 +156,68 @@ fn walk_primary(primary: PrimaryNode, ctx: &mut Context) -> String {
 }
 
 fn walk_func_call(func_call: FuncCallNode, ctx: &mut Context) -> String {
+    println!("FUNCCALL {:?}", func_call);
     let params_code = func_call
+        .clone()
         .params
         .into_iter()
         .map(|param| walk_expression(param, ctx))
         .collect::<Vec<String>>()
         .join(", ");
 
-    format!("{}({})", func_call.name, params_code)
+    let mut new_name = func_call.name.clone();
+
+    if let Some(generic_func) = ctx.generic_function_declarations.get(&func_call.name) {
+        let node = generic_func.node.clone();
+
+        println!(
+            "dbg_e {:?} {:?}",
+            generic_func.generic_params, func_call.generic_params
+        );
+
+        let params = func_call
+            .generic_params
+            .iter()
+            .enumerate()
+            .map(|(i, p)| FuncParam {
+                name: generic_func.node.params[i].name.clone(),
+                param_type: p.clone(),
+            })
+            .collect::<Vec<_>>();
+
+        println!("dbg_d {:?}", params);
+
+        let return_type = if let Some(return_type) = node.return_type {
+            if let Some(pos) = generic_func
+                .generic_params
+                .iter()
+                .position(|x| *x == return_type)
+            {
+                func_call.generic_params[pos].clone()
+            } else {
+                return_type
+            }
+        } else {
+            // Handle the case where return_type is None
+            panic!("No return type specified") // or return a default/error
+        };
+
+        new_name = format!("{}_{}", node.name, func_call.generic_params.join("_"));
+
+        walk_func_def(
+            FuncDefNode {
+                name: new_name.clone(),
+                params,
+                body: node.body,
+                return_type: Some(return_type),
+                generic_typing: None,
+            },
+            ctx,
+            false,
+        );
+    }
+
+    format!("{}({})", new_name, params_code)
 }
 
 fn walk_block(block: BlockNode, ctx: &mut Context) -> CodeGenResult {
@@ -162,14 +232,29 @@ fn walk_block(block: BlockNode, ctx: &mut Context) -> CodeGenResult {
     }
 }
 
-fn walk_func_def(node: FuncDefNode, ctx: &mut Context) {
+fn walk_func_def(node: FuncDefNode, ctx: &mut Context, return_code: bool) {
     let code = format!(
-        "int {}({}) {{ {} }}",
+        "{} {}({}) {{ {} }}",
+        match node.clone().return_type {
+            Some(ret_type) => ret_type,
+            None => "void".to_string(),
+        },
         node.name,
-        walk_func_def_params(node.params, ctx),
-        walk_block(node.body, ctx).code
+        walk_func_def_params(node.clone().params, ctx),
+        walk_block(node.clone().body, ctx).code
     )
     .to_string();
+
+    if let Some(generic_typing) = node.clone().generic_typing {
+        ctx.generic_function_declarations.insert(
+            node.clone().name,
+            GenericFuncDeclaration {
+                node,
+                generic_params: generic_typing.types,
+            },
+        );
+        return;
+    }
 
     ctx.add_function_declaration(code);
 }

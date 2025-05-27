@@ -1,4 +1,3 @@
-use super::INDENT;
 use super::expression::Indent;
 use super::{expression::IndentDisplay, term::VarDeclNode};
 use std::fmt::{self, Display, Formatter, Result, write};

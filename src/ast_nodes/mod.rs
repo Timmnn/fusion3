@@ -8,4 +8,4 @@ pub mod program;
 pub mod term;
 pub mod var_access;
 
-pub const INDENT: &str = "  ";
+pub const INDENT: &str = " ";

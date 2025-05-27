@@ -40,6 +40,7 @@ fn build_program(pair: Pair) -> ProgramNode {
 }
 
 fn build_expression(pair: Pair) -> ExpressionNode {
+    println!("EXPR: {}", pair);
     let mut inner = pair.into_inner();
 
     let expr = inner.next().expect("Expression has to have a child node");
@@ -154,14 +155,40 @@ fn build_func_call(pair: Pair) -> FuncCallNode {
 
     let name = inner.next().unwrap().as_str().to_string();
 
-    let mut param_list = inner.next().unwrap();
+    let mut param_list = None;
+    let mut generic_params = None;
+
+    for rule in inner {
+        match rule.as_rule() {
+            Rule::param_list => param_list = Some(rule),
+            Rule::generic_params => generic_params = Some(rule),
+            _ => panic!("Invalid rule in func_call {}", rule),
+        };
+    }
 
     let params = param_list
+        .unwrap()
         .into_inner()
-        .map(|e| build_expression(e))
+        .map(|e| match e.as_rule() {
+            Rule::expression => build_expression(e),
+            _ => panic!("Invalid Rule {:?} in param_list", e.as_rule()),
+        })
         .collect();
 
-    FuncCallNode { name, params }
+    let generic_params = match generic_params {
+        Some(p) => build_generic_params(p),
+        None => vec![],
+    };
+
+    FuncCallNode {
+        name,
+        params,
+        generic_params,
+    }
+}
+
+fn build_generic_params(pair: Pair) -> Vec<String> {
+    pair.into_inner().map(|p| p.as_str().to_string()).collect()
 }
 
 fn build_var_decl(pair: Pair) -> VarDeclNode {
@@ -240,5 +267,5 @@ fn build_field_def(pair: Pair) -> FuncParam {
 }
 
 fn build_return_type(pair: Pair) -> String {
-    "".to_string()
+    pair.as_str().to_string()
 }

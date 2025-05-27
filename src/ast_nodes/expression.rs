@@ -24,7 +24,7 @@ impl Indent {
 
     // Helper to get indent as string
     pub fn as_str(&self) -> String {
-        "|  ".repeat(self.0)
+        "| ".repeat(self.0)
     }
 }
 
@@ -46,7 +46,7 @@ impl IndentDisplay for ExpressionNode {
             indent.as_str(),
             "Expression".on_truecolor(200, 120, 125).black()
         )?;
-        self.kind.fmt_with_indent(f, indent.increment(2))
+        self.kind.fmt_with_indent(f, indent.increment(1))
     }
 }
 
@@ -110,13 +110,13 @@ impl IndentDisplay for ExpressionKind {
         writeln!(f, "{}{}", indent.as_str(), string)?;
 
         match self {
-            ExpressionKind::AddExpr(node) => node.fmt_with_indent(f, indent.increment(2)),
-            ExpressionKind::VarDecl(node) => node.fmt_with_indent(f, indent.increment(2)),
-            ExpressionKind::FuncDef(node) => node.fmt_with_indent(f, indent.increment(2)),
-            ExpressionKind::ReturnExpr(node) => node.fmt_with_indent(f, indent.increment(2)),
+            ExpressionKind::AddExpr(node) => node.fmt_with_indent(f, indent.increment(1)),
+            ExpressionKind::VarDecl(node) => node.fmt_with_indent(f, indent.increment(1)),
+            ExpressionKind::FuncDef(node) => node.fmt_with_indent(f, indent.increment(1)),
+            ExpressionKind::ReturnExpr(node) => node.fmt_with_indent(f, indent.increment(1)),
             ExpressionKind::CImport(node) => Ok(()),
 
-            ExpressionKind::FuncCall(node) => node.fmt_with_indent(f, indent.increment(2)),
+            ExpressionKind::FuncCall(node) => node.fmt_with_indent(f, indent.increment(1)),
             ExpressionKind::StrLit(node) => writeln!(
                 f,
                 "{}{}",
@@ -185,7 +185,7 @@ impl IndentDisplay for MulExprPart {
             self.op
         )?;
         writeln!(f, "{}Value:", indent.as_str())?;
-        self.value.fmt_with_indent(f, indent.increment(2))
+        self.value.fmt_with_indent(f, indent.increment(1))
     }
 }
 
@@ -205,7 +205,7 @@ impl IndentDisplay for AddExprPart {
             self.op
         )?;
         writeln!(f, "{}Value:", indent.as_str())?;
-        self.value.fmt_with_indent(f, indent.increment(2))
+        self.value.fmt_with_indent(f, indent.increment(1))
     }
 }
 
