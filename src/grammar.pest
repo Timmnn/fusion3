@@ -24,7 +24,7 @@ ident = @{
 alpha = _{ 'a'..'z' | 'A'..'Z' | "*" | "#" | "~" | "^" | "$" }
 digit = _{ '0'..'9' }
 
-expression = { c_import | func_def | str_lit | return_expr | func_call | var_decl | assignment | add_expr | int_lit | var_access }
+expression = { c_import | func_def | str_lit | return_expr | func_call | var_decl | assignment | add_expr | float_lit | int_lit | var_access }
 
 add_expr = { mul_expr ~ ((add | subtract) ~ mul_expr)* }
 
@@ -35,8 +35,8 @@ var_access = { ident }
 return_expr = { "return" ~ expression }
 
 primary = {
-    int_lit
-  | float_lit
+   float_lit
+  |  int_lit
   | str_lit
   | func_call
   | struct_init

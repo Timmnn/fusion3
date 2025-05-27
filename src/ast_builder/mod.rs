@@ -136,6 +136,7 @@ fn build_primary(pair: Pair) -> PrimaryNode {
         Rule::var_access => PrimaryKind::VarAccess(build_var_access(primary)),
         Rule::int_lit => PrimaryKind::IntLit(primary.as_str().parse().unwrap()),
         Rule::str_lit => PrimaryKind::StrLit(primary.as_str().to_string()),
+        Rule::float_lit => PrimaryKind::FloatLit(primary.as_str().parse().unwrap()),
         _ => todo!("{:?}", primary),
     };
 

@@ -3,5 +3,6 @@ fn double_any<T>(value: T) T {
 }
 
 double_any<int>(66)
-double_any<string>("hi")
+double_any<float>(4.8)
+
 

@@ -150,6 +150,7 @@ fn walk_primary(primary: PrimaryNode, ctx: &mut Context) -> String {
     match primary.kind {
         PrimaryKind::IntLit(val) => val.to_string(),
         PrimaryKind::VarAccess(val) => val.name,
+        PrimaryKind::FloatLit(val) => val.to_string(),
 
         _ => todo!(),
     }
