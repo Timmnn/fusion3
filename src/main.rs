@@ -59,21 +59,19 @@ fn main() {
         code
     );
 
-    let formatter_output;
-
-    if std::env::consts::OS == "windows" {
-        formatter_output = Command::new("powershell")
+    let formatter_output = if std::env::consts::OS == "windows" {
+        Command::new("powershell")
             .arg("-c")
             .arg(format!("echo '{}' | clang-format", code))
             .output()
-            .unwrap();
+            .unwrap()
     } else {
-        formatter_output = Command::new("sh")
+        Command::new("sh")
             .arg("-c")
             .arg(format!("echo '{}' | clang-format", code))
             .output()
-            .unwrap();
-    }
+            .unwrap()
+    };
 
     let formatted_code = String::from_utf8(formatter_output.stdout).unwrap();
 

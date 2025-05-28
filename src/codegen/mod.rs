@@ -8,10 +8,8 @@ use crate::ast_nodes::{
     },
     func_call::FuncCallNode,
     func_def::{FuncDefNode, FuncParam},
-    operation::OperationNode,
     program::ProgramNode,
-    struct_def::StructDefNode,
-    term::{TermKind, TermNode},
+    struct_def::{StructDefNode, StructFieldAccessNode},
 };
 
 struct GenericFuncDeclaration {
@@ -20,8 +18,8 @@ struct GenericFuncDeclaration {
 }
 
 struct Context {
-    scope_stack: Vec<String>,
-    current_scope: u32,
+    _scope_stack: Vec<String>,
+    _current_scope: u32,
     function_declarations: Vec<String>,
     pub generic_function_declarations: HashMap<String, GenericFuncDeclaration>,
     pub main_function_content: String,
@@ -39,12 +37,12 @@ impl Context {
 impl Default for Context {
     fn default() -> Self {
         Self {
-            scope_stack: vec![String::from("Global")],
+            _scope_stack: vec![String::from("Global")],
             function_declarations: vec![],
             struct_definitions: vec![],
             generic_function_declarations: HashMap::new(),
             generic_function_implementations: HashMap::new(),
-            current_scope: 0,
+            _current_scope: 0,
             main_function_content: String::from(""),
             imports: vec![],
         }
@@ -60,21 +58,21 @@ pub fn gen_code(program: ProgramNode) -> String {
     walk_program(program, &mut ctx);
     let main_function = format!("int main(){{{}return 0;}}", ctx.main_function_content);
 
-    let default_type_defs = vec!["typedef char* string;"];
+    let default_type_defs = ["typedef char* string;"];
 
-    return format!(
+    format!(
         "{}{}{}{}{}{}",
         default_type_defs.join(""),
         ctx.struct_definitions.join(""),
         ctx.imports.join(";"),
         ctx.function_declarations.join(";"),
         ctx.generic_function_implementations
-            .iter()
-            .map(|(_, f)| f.clone())
+            .values()
+            .cloned()
             .collect::<Vec<_>>()
             .join(";"),
         main_function
-    );
+    )
 }
 
 fn walk_program(program: ProgramNode, ctx: &mut Context) {
@@ -90,7 +88,7 @@ fn walk_expression(expr: ExpressionNode, ctx: &mut Context) -> String {
         ExpressionKind::AddExpr(node) => walk_add_expr(node, ctx),
 
         ExpressionKind::FuncDef(node) => {
-            walk_func_def(node, ctx, false);
+            walk_func_def(node, ctx);
 
             String::from("")
         }
@@ -106,24 +104,29 @@ fn walk_expression(expr: ExpressionNode, ctx: &mut Context) -> String {
             walk_struct_def(node, ctx);
             String::from("")
         }
+        ExpressionKind::StructFieldAccess(node) => walk_struct_field_access(node, ctx),
         _ => todo!("{:?}", expr.kind),
     }
+}
+
+fn walk_struct_field_access(node: StructFieldAccessNode, _ctx: &mut Context) -> String {
+    format!("{}.{}", node.struct_name, node.field_name)
 }
 
 fn walk_struct_def(node: StructDefNode, ctx: &mut Context) {
     println!("SAAAAAA   {:?}", node);
     ctx.struct_definitions.push(format!(
-        "struct {} {{ {} }};",
-        node.name,
+        "struct _{name} {{ {} }}; typedef struct _{name} {name};",
         node.fields
             .into_iter()
             .map(|field| format!("{} {};", field.type_name, field.name))
             .collect::<Vec<String>>()
-            .join("")
+            .join(""),
+        name = node.name,
     ));
 }
 
-fn walk_str_lit(str: String, ctx: &mut Context) -> String {
+fn walk_str_lit(str: String, _ctx: &mut Context) -> String {
     str
 }
 
@@ -147,7 +150,7 @@ fn walk_add_expr(add: AddExprNode, ctx: &mut Context) -> String {
         .as_str();
     }
 
-    return left_code;
+    left_code
 }
 
 fn walk_mul_expr_node(mul: MulExprNode, ctx: &mut Context) -> String {
@@ -158,13 +161,13 @@ fn walk_mul_expr_node(mul: MulExprNode, ctx: &mut Context) -> String {
             MulOp::Multiply => format!("*{}", walk_primary(factor.value, ctx)),
             MulOp::Divide => format!("/{}", walk_primary(factor.value, ctx)),
         }
-        .as_str();
+        .as_str()
     }
 
-    return left_code;
+    left_code
 }
 
-fn walk_primary(primary: PrimaryNode, ctx: &mut Context) -> String {
+fn walk_primary(primary: PrimaryNode, _ctx: &mut Context) -> String {
     match primary.kind {
         PrimaryKind::IntLit(val) => val.to_string(),
         PrimaryKind::VarAccess(val) => val.name,
@@ -232,7 +235,6 @@ fn walk_func_call(func_call: FuncCallNode, ctx: &mut Context) -> String {
                 generic_typing: None,
             },
             ctx,
-            false,
         );
     }
 
@@ -251,7 +253,7 @@ fn walk_block(block: BlockNode, ctx: &mut Context) -> CodeGenResult {
     }
 }
 
-fn walk_func_def(node: FuncDefNode, ctx: &mut Context, return_code: bool) {
+fn walk_func_def(node: FuncDefNode, ctx: &mut Context) {
     let code = format!(
         "{} {}({}) {{ {} }}",
         match node.clone().return_type {
@@ -278,7 +280,7 @@ fn walk_func_def(node: FuncDefNode, ctx: &mut Context, return_code: bool) {
     ctx.add_function_declaration(code);
 }
 
-fn walk_func_def_params(params: Vec<FuncParam>, ctx: &mut Context) -> String {
+fn walk_func_def_params(params: Vec<FuncParam>, _ctx: &mut Context) -> String {
     let x = params
         .into_iter()
         .map(|param| format!("{} {}", param.param_type, param.name))

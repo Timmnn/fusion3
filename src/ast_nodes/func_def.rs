@@ -1,10 +1,7 @@
 use super::expression::Indent;
-use std::fmt::{self, Debug, Display, Formatter, Result};
+use std::fmt::{Debug, Formatter, Result};
 
-use super::{
-    block::BlockNode,
-    expression::{ExpressionNode, IndentDisplay},
-};
+use super::{block::BlockNode, expression::IndentDisplay};
 
 #[derive(Debug, Clone)]
 pub struct FuncDefNode {

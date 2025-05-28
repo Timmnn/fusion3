@@ -2,12 +2,12 @@ use super::{
     block::BlockNode,
     func_call::FuncCallNode,
     func_def::FuncDefNode,
-    struct_def::StructDefNode,
-    term::{StructInitNode, TermNode, VarDeclNode},
+    struct_def::{StructDefNode, StructFieldAccessNode},
+    term::{StructInitNode, VarDeclNode},
     var_access::VarAccessNode,
 };
 use colored::Colorize;
-use std::fmt::{self, Debug, Display, Formatter, Result};
+use std::fmt::{Debug, Display, Formatter, Result};
 
 // Define a constant for indentation increment
 // Use a dedicated struct to track indentation level
@@ -68,6 +68,7 @@ pub enum ExpressionKind {
     IntLit(i32),
     StrLit(String),
     StructDef(StructDefNode),
+    StructFieldAccess(StructFieldAccessNode),
 }
 
 #[derive(Debug, Clone)]
@@ -76,7 +77,7 @@ pub struct CImportNode {
 }
 impl IndentDisplay for CImportNode {
     fn fmt_with_indent(&self, f: &mut Formatter<'_>, indent: Indent) -> Result {
-        write!(f, "{}{}", indent.as_str(), self.module);
+        let _ = write!(f, "{}{}", indent.as_str(), self.module);
 
         Ok(())
     }
@@ -98,17 +99,20 @@ impl IndentDisplay for ReturnExprNode {
 impl IndentDisplay for ExpressionKind {
     fn fmt_with_indent(&self, f: &mut Formatter<'_>, indent: Indent) -> Result {
         let string = match self {
-            ExpressionKind::AddExpr(node) => "AddExpr".on_truecolor(100, 149, 237).black(),
-            ExpressionKind::VarDecl(node) => "VarDecl".on_truecolor(100, 150, 200).black(),
-            ExpressionKind::FuncDef(node) => "FuncDef".on_truecolor(10, 150, 200).black(),
-            ExpressionKind::ReturnExpr(node) => "ReturnExpr".on_truecolor(50, 150, 200).black(),
+            ExpressionKind::AddExpr(_) => "AddExpr".on_truecolor(100, 149, 237).black(),
+            ExpressionKind::VarDecl(_) => "VarDecl".on_truecolor(100, 150, 200).black(),
+            ExpressionKind::FuncDef(_) => "FuncDef".on_truecolor(10, 150, 200).black(),
+            ExpressionKind::ReturnExpr(_) => "ReturnExpr".on_truecolor(50, 150, 200).black(),
             ExpressionKind::CImport(node) => format!("CImport({})", node.module)
                 .on_truecolor(50, 150, 200)
                 .black(),
-            ExpressionKind::FuncCall(node) => "FuncCall()".on_truecolor(245, 184, 8).black(),
-            ExpressionKind::IntLit(int) => "IntLit()".on_truecolor(25, 67, 1).black(),
-            ExpressionKind::StrLit(str) => "StrLit()".on_truecolor(5, 67, 1).black(),
-            ExpressionKind::StructDef(node) => "StructDef()".on_truecolor(5, 78, 155).black(),
+            ExpressionKind::FuncCall(_) => "FuncCall()".on_truecolor(245, 184, 8).black(),
+            ExpressionKind::IntLit(_) => "IntLit()".on_truecolor(25, 67, 1).black(),
+            ExpressionKind::StrLit(_) => "StrLit()".on_truecolor(5, 67, 1).black(),
+            ExpressionKind::StructDef(_) => "StructDef()".on_truecolor(5, 78, 155).black(),
+            ExpressionKind::StructFieldAccess(_) => {
+                "StructFieldAccess()".on_truecolor(5, 78, 155).black()
+            }
         };
         writeln!(f, "{}{}", indent.as_str(), string)?;
 
@@ -118,15 +122,16 @@ impl IndentDisplay for ExpressionKind {
             ExpressionKind::FuncDef(node) => node.fmt_with_indent(f, indent.increment(1)),
             ExpressionKind::ReturnExpr(node) => node.fmt_with_indent(f, indent.increment(1)),
             ExpressionKind::StructDef(node) => node.fmt_with_indent(f, indent.increment(1)),
-            ExpressionKind::CImport(node) => Ok(()),
+            ExpressionKind::CImport(_) => Ok(()),
             ExpressionKind::FuncCall(node) => node.fmt_with_indent(f, indent.increment(1)),
-            ExpressionKind::StrLit(node) => writeln!(
+            ExpressionKind::StructFieldAccess(node) => node.fmt_with_indent(f, indent.increment(1)),
+            ExpressionKind::StrLit(_) => writeln!(
                 f,
                 "{}{}",
                 indent.increment(1).as_str(),
                 "StrLit".on_truecolor(200, 120, 125).black()
             ),
-            ExpressionKind::IntLit(node) => writeln!(
+            ExpressionKind::IntLit(_) => writeln!(
                 f,
                 "{}{}",
                 indent.increment(1).as_str(),
@@ -280,22 +285,6 @@ impl IndentDisplay for PrimaryNode {
             PrimaryKind::StrLit(val) => {
                 writeln!(f, "{}StringLiteral(\"{}\")", inner_indent.as_str(), val)
             }
-            PrimaryKind::StructInit(node) => {
-                writeln!(f, "{}StructInit:", inner_indent.as_str())?;
-                node.fmt_with_indent(f, inner_indent.increment(1))
-            }
-            PrimaryKind::Block(node) => {
-                writeln!(f, "{}Block:", inner_indent.as_str())?;
-                node.fmt_with_indent(f, inner_indent.increment(1))
-            }
-            PrimaryKind::FuncDef(node) => {
-                writeln!(f, "{}FunctionDef:", inner_indent.as_str())?;
-                node.fmt_with_indent(f, inner_indent.increment(1))
-            }
-            PrimaryKind::Expression(expr) => {
-                writeln!(f, "{}Expression:", inner_indent.as_str())?;
-                expr.fmt_with_indent(f, inner_indent.increment(1))
-            }
             PrimaryKind::VarAccess(expr) => {
                 writeln!(f, "{}VarAccess:", inner_indent.as_str())?;
                 expr.fmt_with_indent(f, inner_indent.increment(1))
@@ -308,10 +297,6 @@ impl IndentDisplay for PrimaryNode {
 pub enum PrimaryKind {
     FloatLit(f32),
     StrLit(String),
-    StructInit(StructInitNode),
-    Block(BlockNode),
-    FuncDef(FuncDefNode),
-    Expression(Box<ExpressionNode>),
     VarAccess(VarAccessNode),
     IntLit(i32),
 }
@@ -364,7 +349,7 @@ impl IndentDisplay for VarDeclNode {
 impl IndentDisplay for FuncCallNode {
     fn fmt_with_indent(&self, f: &mut Formatter<'_>, indent: Indent) -> Result {
         self.params.iter().for_each(|p| {
-            p.fmt_with_indent(f, indent.increment(1));
+            let _ = p.fmt_with_indent(f, indent.increment(1));
         });
 
         Ok(())
@@ -380,7 +365,7 @@ impl IndentDisplay for StructInitNode {
 impl IndentDisplay for BlockNode {
     fn fmt_with_indent(&self, f: &mut Formatter<'_>, indent: Indent) -> Result {
         self.expressions.iter().for_each(|e| {
-            e.fmt_with_indent(f, indent);
+            let _ = e.fmt_with_indent(f, indent);
         });
 
         Ok(())
@@ -393,7 +378,7 @@ impl IndentDisplay for FuncDefNode {
             let _ = p.fmt_with_indent(f, indent);
         });
 
-        writeln!(f, "");
+        let _ = writeln!(f);
 
         self.body.fmt_with_indent(f, indent.increment(1))
     }

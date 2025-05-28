@@ -1,6 +1,6 @@
 use super::expression::Indent;
-use super::{expression::IndentDisplay, term::VarDeclNode};
-use std::fmt::{self, Display, Formatter, Result, write};
+use super::expression::IndentDisplay;
+use std::fmt::{Formatter, Result};
 
 #[derive(Debug, Clone)]
 pub struct VarAccessNode {

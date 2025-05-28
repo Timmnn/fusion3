@@ -2,20 +2,18 @@ use std::vec;
 
 use crate::ast_nodes::{
     block::BlockNode,
-    calc::{Addent, CalculationKind, CalculationNode, Factor, MultiplicationNode},
     expression::{
         AddExprNode, AddExprPart, AddOp, CImportNode, ExpressionKind, ExpressionNode, MulExprNode,
         MulExprPart, MulOp, PrimaryKind, PrimaryNode, ReturnExprNode,
     },
     func_call::FuncCallNode,
     func_def::{FuncDefNode, FuncParam, GenericTypingNode},
-    operation::{OperationKind, OperationNode},
     program::ProgramNode,
-    struct_def::{StructDefNode, StructFieldNode},
-    term::{TermKind, TermNode, VarDeclNode},
+    struct_def::{StructDefNode, StructFieldAccessNode, StructFieldNode},
+    term::VarDeclNode,
     var_access::VarAccessNode,
 };
-use crate::parser::{FusionParser, Rule};
+use crate::parser::Rule;
 
 type Pair<'a> = pest::iterators::Pair<'a, Rule>;
 
@@ -27,7 +25,6 @@ pub fn build_ast_from_pairs(pair: Pair) -> ProgramNode {
 }
 
 fn build_program(pair: Pair) -> ProgramNode {
-    let rule = pair.as_rule();
     let expressions = pair
         .into_inner()
         .filter_map(|p| match p.as_rule() {
@@ -37,7 +34,7 @@ fn build_program(pair: Pair) -> ProgramNode {
         })
         .collect::<Vec<ExpressionNode>>();
 
-    return ProgramNode { expressions };
+    ProgramNode { expressions }
 }
 
 fn build_expression(pair: Pair) -> ExpressionNode {
@@ -56,12 +53,23 @@ fn build_expression(pair: Pair) -> ExpressionNode {
         Rule::int_lit => ExpressionKind::IntLit(expr.as_str().parse().unwrap()),
         Rule::str_lit => ExpressionKind::StrLit(expr.as_str().replace("\\", "\\\\").to_string()),
         Rule::struct_def => ExpressionKind::StructDef(build_struct_def(expr)),
+        Rule::struct_field_access => {
+            ExpressionKind::StructFieldAccess(build_struct_field_access(expr))
+        }
         _ => panic!("Invalid node in expression: {:?}", expr.as_rule()),
     };
 
-    return ExpressionNode {
+    ExpressionNode {
         kind: expression_kind,
-    };
+    }
+}
+
+fn build_struct_field_access(pair: Pair) -> StructFieldAccessNode {
+    let mut inner = pair.into_inner();
+    StructFieldAccessNode {
+        struct_name: inner.next().unwrap().as_str().to_string(),
+        field_name: inner.next().unwrap().as_str().to_string(),
+    }
 }
 
 fn build_struct_def(pair: Pair) -> StructDefNode {
@@ -221,7 +229,7 @@ fn build_generic_params(pair: Pair) -> Vec<String> {
     pair.into_inner().map(|p| p.as_str().to_string()).collect()
 }
 
-fn build_var_decl(pair: Pair) -> VarDeclNode {
+fn build_var_decl(_pair: Pair) -> VarDeclNode {
     todo!()
 }
 
@@ -248,17 +256,17 @@ fn build_func_def(pair: Pair) -> FuncDefNode {
         };
     }
 
-    return FuncDefNode {
+    FuncDefNode {
         name,
         params: param_def_list.unwrap_or(vec![]),
         body: body.unwrap(),
         generic_typing,
         return_type,
-    };
+    }
 }
 
 fn build_generic_typing(pair: Pair) -> GenericTypingNode {
-    let mut inner = pair.into_inner();
+    let inner = pair.into_inner();
 
     let generic_params = inner
         .map(|p| p.as_str().to_string())
@@ -279,11 +287,11 @@ fn build_block(pair: Pair) -> BlockNode {
         })
         .collect();
 
-    return BlockNode { expressions };
+    BlockNode { expressions }
 }
 
 fn build_param_def_list(pair: Pair) -> Vec<FuncParam> {
-    let mut inner = pair.into_inner();
+    let inner = pair.into_inner();
 
     inner.map(|p| build_field_def(p)).collect()
 }
