@@ -24,7 +24,7 @@ ident = @{
 alpha = _{ 'a'..'z' | 'A'..'Z' | "*" | "#" | "~" | "^" | "$" }
 digit = _{ '0'..'9' }
 
-expression = { c_import | func_def | str_lit | return_expr | func_call | var_decl | assignment | add_expr | float_lit | int_lit | var_access }
+expression = { c_import | func_def | str_lit | return_expr | func_call | var_decl | struct_def | assignment | add_expr | float_lit | int_lit | var_access }
 
 add_expr = { mul_expr ~ ((add | subtract) ~ mul_expr)* }
 
@@ -91,8 +91,8 @@ param_list     = { expression ~ ("," ~ expression)* }
     STRUCTS
     --------------------------------------------------
 */
-struct_def         =  { "type" ~ ident ~ "=" ~ "{" ~ struct_def_content? ~ "}" }
-struct_def_content =  { field_def ~ ("," ~ field_def)* }
+struct_def         =  { "struct" ~ ident ~ "=" ~ "{" ~ struct_def_content? ~ "}" }
+struct_def_content =  { NEWLINE ~ field_def ~ ((NEWLINE | ",") ~field_def)* ~ NEWLINE* }
 field_ident        = @{ (alpha | digit)+ }
 field_def          =  { field_ident ~ ":" ~ ident }
 struct_init        =  { ident ~ "{" ~ struct_field_init ~ ("," ~ struct_field_init)* ~ "}" }

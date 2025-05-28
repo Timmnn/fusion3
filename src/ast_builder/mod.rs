@@ -11,6 +11,7 @@ use crate::ast_nodes::{
     func_def::{FuncDefNode, FuncParam, GenericTypingNode},
     operation::{OperationKind, OperationNode},
     program::ProgramNode,
+    struct_def::{StructDefNode, StructFieldNode},
     term::{TermKind, TermNode, VarDeclNode},
     var_access::VarAccessNode,
 };
@@ -54,12 +55,40 @@ fn build_expression(pair: Pair) -> ExpressionNode {
         Rule::func_call => ExpressionKind::FuncCall(build_func_call(expr)),
         Rule::int_lit => ExpressionKind::IntLit(expr.as_str().parse().unwrap()),
         Rule::str_lit => ExpressionKind::StrLit(expr.as_str().replace("\\", "\\\\").to_string()),
+        Rule::struct_def => ExpressionKind::StructDef(build_struct_def(expr)),
         _ => panic!("Invalid node in expression: {:?}", expr.as_rule()),
     };
 
     return ExpressionNode {
         kind: expression_kind,
     };
+}
+
+fn build_struct_def(pair: Pair) -> StructDefNode {
+    let mut inner = pair.into_inner();
+
+    let name = inner.next().unwrap().as_str().to_string();
+
+    let mut fields = vec![];
+
+    let struct_def_content = inner.next().unwrap();
+
+    for field_def in struct_def_content.into_inner() {
+        println!("field_def {}", field_def);
+        fields.push(build_struct_field_def(field_def));
+    }
+
+    StructDefNode { name, fields }
+}
+
+fn build_struct_field_def(pair: Pair) -> StructFieldNode {
+    println!("SFD {}", pair);
+
+    let mut inner = pair.into_inner();
+    let name = inner.next().unwrap().as_str().to_string();
+    let type_name = inner.next().unwrap().as_str().to_string();
+
+    StructFieldNode { name, type_name }
 }
 
 fn build_c_import(pair: Pair) -> CImportNode {

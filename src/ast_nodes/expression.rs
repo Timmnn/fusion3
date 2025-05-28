@@ -2,6 +2,7 @@ use super::{
     block::BlockNode,
     func_call::FuncCallNode,
     func_def::FuncDefNode,
+    struct_def::StructDefNode,
     term::{StructInitNode, TermNode, VarDeclNode},
     var_access::VarAccessNode,
 };
@@ -66,6 +67,7 @@ pub enum ExpressionKind {
     FuncCall(FuncCallNode),
     IntLit(i32),
     StrLit(String),
+    StructDef(StructDefNode),
 }
 
 #[derive(Debug, Clone)]
@@ -106,6 +108,7 @@ impl IndentDisplay for ExpressionKind {
             ExpressionKind::FuncCall(node) => "FuncCall()".on_truecolor(245, 184, 8).black(),
             ExpressionKind::IntLit(int) => "IntLit()".on_truecolor(25, 67, 1).black(),
             ExpressionKind::StrLit(str) => "StrLit()".on_truecolor(5, 67, 1).black(),
+            ExpressionKind::StructDef(node) => "StructDef()".on_truecolor(5, 78, 155).black(),
         };
         writeln!(f, "{}{}", indent.as_str(), string)?;
 
@@ -114,8 +117,8 @@ impl IndentDisplay for ExpressionKind {
             ExpressionKind::VarDecl(node) => node.fmt_with_indent(f, indent.increment(1)),
             ExpressionKind::FuncDef(node) => node.fmt_with_indent(f, indent.increment(1)),
             ExpressionKind::ReturnExpr(node) => node.fmt_with_indent(f, indent.increment(1)),
+            ExpressionKind::StructDef(node) => node.fmt_with_indent(f, indent.increment(1)),
             ExpressionKind::CImport(node) => Ok(()),
-
             ExpressionKind::FuncCall(node) => node.fmt_with_indent(f, indent.increment(1)),
             ExpressionKind::StrLit(node) => writeln!(
                 f,

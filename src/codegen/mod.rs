@@ -10,6 +10,7 @@ use crate::ast_nodes::{
     func_def::{FuncDefNode, FuncParam},
     operation::OperationNode,
     program::ProgramNode,
+    struct_def::StructDefNode,
     term::{TermKind, TermNode},
 };
 
@@ -24,6 +25,7 @@ struct Context {
     function_declarations: Vec<String>,
     pub generic_function_declarations: HashMap<String, GenericFuncDeclaration>,
     pub main_function_content: String,
+    pub struct_definitions: Vec<String>,
     pub imports: Vec<String>,
     pub generic_function_implementations: HashMap<Vec<String>, String>,
 }
@@ -39,6 +41,7 @@ impl Default for Context {
         Self {
             scope_stack: vec![String::from("Global")],
             function_declarations: vec![],
+            struct_definitions: vec![],
             generic_function_declarations: HashMap::new(),
             generic_function_implementations: HashMap::new(),
             current_scope: 0,
@@ -55,15 +58,14 @@ struct CodeGenResult {
 pub fn gen_code(program: ProgramNode) -> String {
     let mut ctx = Context::default();
     walk_program(program, &mut ctx);
-    let main_function = format!("int main(){{{};return 0;}}", ctx.main_function_content);
+    let main_function = format!("int main(){{{}return 0;}}", ctx.main_function_content);
 
     let default_type_defs = vec!["typedef char* string;"];
 
-    println!("GEN {:?}", ctx.generic_function_implementations);
-
     return format!(
-        "{}{}{}{}{}",
-        default_type_defs.join(";"),
+        "{}{}{}{}{}{}",
+        default_type_defs.join(""),
+        ctx.struct_definitions.join(""),
         ctx.imports.join(";"),
         ctx.function_declarations.join(";"),
         ctx.generic_function_implementations
@@ -100,9 +102,25 @@ fn walk_expression(expr: ExpressionNode, ctx: &mut Context) -> String {
         ExpressionKind::IntLit(val) => val.to_string(),
         ExpressionKind::FuncCall(node) => walk_func_call(node, ctx),
         ExpressionKind::StrLit(str) => walk_str_lit(str, ctx),
-
+        ExpressionKind::StructDef(node) => {
+            walk_struct_def(node, ctx);
+            String::from("")
+        }
         _ => todo!("{:?}", expr.kind),
     }
+}
+
+fn walk_struct_def(node: StructDefNode, ctx: &mut Context) {
+    println!("SAAAAAA   {:?}", node);
+    ctx.struct_definitions.push(format!(
+        "struct {} {{ {} }};",
+        node.name,
+        node.fields
+            .into_iter()
+            .map(|field| format!("{} {};", field.type_name, field.name))
+            .collect::<Vec<String>>()
+            .join("")
+    ));
 }
 
 fn walk_str_lit(str: String, ctx: &mut Context) -> String {
